@@ -1,4 +1,4 @@
-package tracing
+package instrument
 
 import (
 	"crypto/md5"
@@ -19,7 +19,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
-type Tracer interface {
+type Instrumenter interface {
 	InstrumentRequestHandler(handler handler.TypedEventHandler[client.Object, reconcile.Request]) handler.TypedEventHandler[client.Object, reconcile.Request]
 	InstrumentPredicate(predicate predicate.Predicate) predicate.Predicate
 
@@ -27,42 +27,43 @@ type Tracer interface {
 	GetOrCreateSentryHubForEvent(event any) *sentry.Hub
 
 	NewQueue(mgr ctrl.Manager) func(controllerName string, rateLimiter workqueue.TypedRateLimiter[reconcile.Request]) workqueue.TypedRateLimitingInterface[reconcile.Request]
+	Cleanup(req reconcile.Request)
 }
 
-type tracer struct {
+type instrumenter struct {
 	mgr ctrl.Manager
 
-	queue *TracingQueue[reconcile.Request]
+	queue *InstrumentedQueue[reconcile.Request]
 
 	lock     sync.Mutex
 	hubCache map[string]weak.Pointer[sentry.Hub]
 }
 
-func NewTracer(mgr ctrl.Manager) Tracer {
-	return &tracer{
+func NewTracer(mgr ctrl.Manager) Instrumenter {
+	return &instrumenter{
 		mgr:      mgr,
 		hubCache: make(map[string]weak.Pointer[sentry.Hub]),
 	}
 }
 
-func InstrumentRequestHandlerWithTracer[T client.Object](t Tracer, handler handler.TypedEventHandler[T, reconcile.Request]) handler.TypedEventHandler[T, reconcile.Request] {
-	return NewTracingEventHandler(t, handler)
+func InstrumentRequestHandlerWithTracer[T client.Object](t Instrumenter, handler handler.TypedEventHandler[T, reconcile.Request]) handler.TypedEventHandler[T, reconcile.Request] {
+	return NewInstrumentedEventHandler(t, handler)
 }
 
-func (t *tracer) InstrumentRequestHandler(handler handler.TypedEventHandler[client.Object, reconcile.Request]) handler.TypedEventHandler[client.Object, reconcile.Request] {
-	return NewTracingEventHandler(t, handler)
+func (t *instrumenter) InstrumentRequestHandler(handler handler.TypedEventHandler[client.Object, reconcile.Request]) handler.TypedEventHandler[client.Object, reconcile.Request] {
+	return NewInstrumentedEventHandler(t, handler)
 }
 
-func (t *tracer) InstrumentPredicate(predicate predicate.Predicate) predicate.Predicate {
-	return NewTracingPredicate(t, predicate)
+func (t *instrumenter) InstrumentPredicate(predicate predicate.Predicate) predicate.Predicate {
+	return NewInstrumentedPredicate(t, predicate)
 }
 
-func (t *tracer) NewQueue(mgr ctrl.Manager) func(controllerName string, rateLimiter workqueue.TypedRateLimiter[reconcile.Request]) workqueue.TypedRateLimitingInterface[reconcile.Request] {
+func (t *instrumenter) NewQueue(mgr ctrl.Manager) func(controllerName string, rateLimiter workqueue.TypedRateLimiter[reconcile.Request]) workqueue.TypedRateLimitingInterface[reconcile.Request] {
 	return func(controllerName string, _ workqueue.TypedRateLimiter[reconcile.Request]) workqueue.TypedRateLimitingInterface[reconcile.Request] {
 		ratelimiter := workqueue.DefaultTypedControllerRateLimiter[*reconcile.Request]()
 
 		if ptr.Deref(mgr.GetControllerOptions().UsePriorityQueue, false) {
-			t.queue = NewTracingQueue(priorityqueue.New(controllerName, func(o *priorityqueue.Opts[*reconcile.Request]) {
+			t.queue = NewInstrumentedQueue(priorityqueue.New(controllerName, func(o *priorityqueue.Opts[*reconcile.Request]) {
 				o.Log = mgr.GetLogger().WithValues("controller", controllerName)
 				o.RateLimiter = ratelimiter
 			}))
@@ -70,36 +71,33 @@ func (t *tracer) NewQueue(mgr ctrl.Manager) func(controllerName string, rateLimi
 			return t.queue
 		}
 
-		t.queue = NewTracingQueue(workqueue.NewTypedRateLimitingQueueWithConfig(ratelimiter, workqueue.TypedRateLimitingQueueConfig[*reconcile.Request]{
+		t.queue = NewInstrumentedQueue(workqueue.NewTypedRateLimitingQueueWithConfig(ratelimiter, workqueue.TypedRateLimitingQueueConfig[*reconcile.Request]{
 			Name: controllerName,
 		}))
 		return t.queue
 	}
 }
 
-func (t *tracer) GetSentryHubForRequest(req reconcile.Request) (*sentry.Hub, bool) {
+func (t *instrumenter) GetSentryHubForRequest(req reconcile.Request) (*sentry.Hub, bool) {
 	if t.queue.internalQueue == nil {
 		newHub := sentry.CurrentHub().Clone()
-		newHub.PushScope()
 		return newHub, false
 	}
 
 	meta, ok := t.queue.GetMetaOf(req)
 	if !ok {
 		newHub := sentry.CurrentHub().Clone()
-		newHub.PushScope()
 		return newHub, false
 	}
 
 	return meta.Hub, true
 }
 
-func (t *tracer) GetOrCreateSentryHubForEvent(event any) *sentry.Hub {
+func (t *instrumenter) GetOrCreateSentryHubForEvent(event any) *sentry.Hub {
 	data, err := json.Marshal(event)
 	if err != nil {
 		ctrl.Log.Error(err, "failed to marshal event for tracing")
 		newHub := sentry.CurrentHub().Clone()
-		newHub.PushScope()
 		return newHub
 	}
 	hash := md5.Sum(data)
@@ -114,7 +112,6 @@ func (t *tracer) GetOrCreateSentryHubForEvent(event any) *sentry.Hub {
 	}
 
 	hub := sentry.CurrentHub().Clone()
-	hub.PushScope()
 	hub.ConfigureScope(func(scope *sentry.Scope) {
 		ctx := sentry.NewPropagationContext()
 		ctx.TraceID = hash
@@ -127,9 +124,17 @@ func (t *tracer) GetOrCreateSentryHubForEvent(event any) *sentry.Hub {
 	return hub
 }
 
-func (t *tracer) cleanupKey(key string) {
+func (t *instrumenter) cleanupKey(key string) {
 	t.lock.Lock()
 	defer t.lock.Unlock()
 
 	delete(t.hubCache, key)
+}
+
+func (t *instrumenter) Cleanup(req reconcile.Request) {
+	if t.queue == nil {
+		return
+	}
+
+	t.queue.cleanupKey(req)
 }

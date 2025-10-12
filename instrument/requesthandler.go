@@ -1,4 +1,4 @@
-package tracing
+package instrument
 
 import (
 	"context"
@@ -13,14 +13,14 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
-type tracingEventHandler[ObjectType client.Object] struct {
-	tracer    Tracer
+type instrumentedEventHandler[ObjectType client.Object] struct {
+	tracer    Instrumenter
 	inner     handler.TypedEventHandler[ObjectType, reconcile.Request]
 	innerName string
 }
 
-func NewTracingEventHandler[ObjectType client.Object](tracer Tracer, inner handler.TypedEventHandler[ObjectType, reconcile.Request]) handler.TypedEventHandler[ObjectType, reconcile.Request] {
-	return &tracingEventHandler[ObjectType]{
+func NewInstrumentedEventHandler[ObjectType client.Object](tracer Instrumenter, inner handler.TypedEventHandler[ObjectType, reconcile.Request]) handler.TypedEventHandler[ObjectType, reconcile.Request] {
+	return &instrumentedEventHandler[ObjectType]{
 		tracer:    tracer,
 		inner:     inner,
 		innerName: fmt.Sprintf("%T", inner),
@@ -28,7 +28,7 @@ func NewTracingEventHandler[ObjectType client.Object](tracer Tracer, inner handl
 }
 
 // Ensure tracingEventHandler implements the handler.TypedEventHandler interface
-func (t *tracingEventHandler[ObjectType]) Create(
+func (t *instrumentedEventHandler[ObjectType]) Create(
 	ctx context.Context,
 	e event.TypedCreateEvent[ObjectType],
 	q workqueue.TypedRateLimitingInterface[reconcile.Request],
@@ -56,7 +56,7 @@ func (t *tracingEventHandler[ObjectType]) Create(
 		},
 	}, nil)
 
-	tracingQueue, ok := q.(*TracingQueue[reconcile.Request])
+	tracingQueue, ok := q.(*InstrumentedQueue[reconcile.Request])
 	if !ok {
 		// If the provided queue is not a TracingQueue, we cannot proceed with tracing
 		t.inner.Create(ctx, e, q)
@@ -75,7 +75,7 @@ func (t *tracingEventHandler[ObjectType]) Create(
 }
 
 // Update is called in response to an update event -  e.g. Pod Updated.
-func (t *tracingEventHandler[ObjectType]) Update(ctx context.Context, e event.TypedUpdateEvent[ObjectType], q workqueue.TypedRateLimitingInterface[reconcile.Request]) {
+func (t *instrumentedEventHandler[ObjectType]) Update(ctx context.Context, e event.TypedUpdateEvent[ObjectType], q workqueue.TypedRateLimitingInterface[reconcile.Request]) {
 	hub := t.tracer.GetOrCreateSentryHubForEvent(e)
 	ctx = sentry.SetHubOnContext(ctx, hub)
 
@@ -112,7 +112,7 @@ func (t *tracingEventHandler[ObjectType]) Update(ctx context.Context, e event.Ty
 		},
 	}, nil)
 
-	tracingQueue, ok := q.(*TracingQueue[reconcile.Request])
+	tracingQueue, ok := q.(*InstrumentedQueue[reconcile.Request])
 	if !ok {
 		// If the provided queue is not a TracingQueue, we cannot proceed with tracing
 		t.inner.Update(ctx, e, q)
@@ -131,7 +131,7 @@ func (t *tracingEventHandler[ObjectType]) Update(ctx context.Context, e event.Ty
 }
 
 // Delete is called in response to a delete event - e.g. Pod Deleted.
-func (t *tracingEventHandler[ObjectType]) Delete(ctx context.Context, e event.TypedDeleteEvent[ObjectType], q workqueue.TypedRateLimitingInterface[reconcile.Request]) {
+func (t *instrumentedEventHandler[ObjectType]) Delete(ctx context.Context, e event.TypedDeleteEvent[ObjectType], q workqueue.TypedRateLimitingInterface[reconcile.Request]) {
 	hub := t.tracer.GetOrCreateSentryHubForEvent(e)
 	ctx = sentry.SetHubOnContext(ctx, hub)
 
@@ -155,7 +155,7 @@ func (t *tracingEventHandler[ObjectType]) Delete(ctx context.Context, e event.Ty
 		},
 	}, nil)
 
-	tracingQueue, ok := q.(*TracingQueue[reconcile.Request])
+	tracingQueue, ok := q.(*InstrumentedQueue[reconcile.Request])
 	if !ok {
 		// If the provided queue is not a TracingQueue, we cannot proceed with tracing
 		t.inner.Delete(ctx, e, q)
@@ -175,7 +175,7 @@ func (t *tracingEventHandler[ObjectType]) Delete(ctx context.Context, e event.Ty
 
 // Generic is called in response to an event of an unknown type or a synthetic event triggered as a cron or
 // external trigger request - e.g. reconcile Autoscaling, or a Webhook.
-func (t *tracingEventHandler[ObjectType]) Generic(ctx context.Context, e event.TypedGenericEvent[ObjectType], q workqueue.TypedRateLimitingInterface[reconcile.Request]) {
+func (t *instrumentedEventHandler[ObjectType]) Generic(ctx context.Context, e event.TypedGenericEvent[ObjectType], q workqueue.TypedRateLimitingInterface[reconcile.Request]) {
 	hub := t.tracer.GetOrCreateSentryHubForEvent(e)
 	ctx = sentry.SetHubOnContext(ctx, hub)
 
@@ -199,7 +199,7 @@ func (t *tracingEventHandler[ObjectType]) Generic(ctx context.Context, e event.T
 		},
 	}, nil)
 
-	tracingQueue, ok := q.(*TracingQueue[reconcile.Request])
+	tracingQueue, ok := q.(*InstrumentedQueue[reconcile.Request])
 	if !ok {
 		// If the provided queue is not a TracingQueue, we cannot proceed with tracing
 		t.inner.Generic(ctx, e, q)

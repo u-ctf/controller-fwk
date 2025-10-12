@@ -1,4 +1,4 @@
-package library
+package ctrlfwk
 
 import (
 	"context"
@@ -29,11 +29,6 @@ func SetupWatch[
 				}
 
 				requestHandler = handler.EnqueueRequestsFromMapFunc(managedByHandler)
-			}
-
-			tracingReconciler, ok := reconciler.(TracingReconciler[ControllerResourceType])
-			if ok {
-				requestHandler = tracingReconciler.InstrumentRequestHandler(requestHandler)
 			}
 
 			// Add the watch source to the reconciler

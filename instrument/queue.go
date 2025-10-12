@@ -1,4 +1,4 @@
-package tracing
+package instrument
 
 import (
 	"runtime"
@@ -18,7 +18,7 @@ type encapsulatedItem[T comparable] struct {
 	Object weak.Pointer[T]
 }
 
-type TracingQueue[T comparable] struct {
+type InstrumentedQueue[T comparable] struct {
 	lock *sync.Mutex
 
 	currentHub    *sentry.Hub
@@ -27,17 +27,17 @@ type TracingQueue[T comparable] struct {
 	metamap map[T]*encapsulatedItem[T]
 }
 
-var _ priorityqueue.PriorityQueue[reconcile.Request] = TracingQueue[reconcile.Request]{}
+var _ priorityqueue.PriorityQueue[reconcile.Request] = InstrumentedQueue[reconcile.Request]{}
 
-func NewTracingQueue[T comparable](queue workqueue.TypedRateLimitingInterface[*T]) *TracingQueue[T] {
-	return &TracingQueue[T]{
+func NewInstrumentedQueue[T comparable](queue workqueue.TypedRateLimitingInterface[*T]) *InstrumentedQueue[T] {
+	return &InstrumentedQueue[T]{
 		lock:          &sync.Mutex{},
 		internalQueue: queue,
 		metamap:       make(map[T]*encapsulatedItem[T]),
 	}
 }
 
-func (q TracingQueue[T]) cleanupKey(key T) {
+func (q InstrumentedQueue[T]) cleanupKey(key T) {
 	q.lock.Lock()
 	defer q.lock.Unlock()
 
@@ -53,8 +53,8 @@ func (q TracingQueue[T]) cleanupKey(key T) {
 	delete(q.metamap, key)
 }
 
-func (q TracingQueue[T]) WithHub(hub *sentry.Hub) *TracingQueue[T] {
-	return &TracingQueue[T]{
+func (q InstrumentedQueue[T]) WithHub(hub *sentry.Hub) *InstrumentedQueue[T] {
+	return &InstrumentedQueue[T]{
 		lock:          q.lock,
 		currentHub:    hub,
 		internalQueue: q.internalQueue,
@@ -62,7 +62,7 @@ func (q TracingQueue[T]) WithHub(hub *sentry.Hub) *TracingQueue[T] {
 	}
 }
 
-func (q TracingQueue[T]) GetMetaOf(item T) (*encapsulatedItem[T], bool) {
+func (q InstrumentedQueue[T]) GetMetaOf(item T) (*encapsulatedItem[T], bool) {
 	val, ok := q.metamap[item]
 	if !ok {
 		return nil, false
@@ -71,7 +71,7 @@ func (q TracingQueue[T]) GetMetaOf(item T) (*encapsulatedItem[T], bool) {
 	return val, true
 }
 
-func (q TracingQueue[T]) isInQueue(item T) bool {
+func (q InstrumentedQueue[T]) isInQueue(item T) bool {
 	val, ok := q.metamap[item]
 	if !ok {
 		return false
@@ -85,7 +85,7 @@ func (q TracingQueue[T]) isInQueue(item T) bool {
 	return true
 }
 
-func (q TracingQueue[T]) Add(item T) {
+func (q InstrumentedQueue[T]) Add(item T) {
 	q.lock.Lock()
 	defer q.lock.Unlock()
 
@@ -102,7 +102,7 @@ func (q TracingQueue[T]) Add(item T) {
 	}
 }
 
-func (q TracingQueue[T]) AddAfter(item T, duration time.Duration) {
+func (q InstrumentedQueue[T]) AddAfter(item T, duration time.Duration) {
 	q.lock.Lock()
 	defer q.lock.Unlock()
 
@@ -119,7 +119,7 @@ func (q TracingQueue[T]) AddAfter(item T, duration time.Duration) {
 	}
 }
 
-func (q TracingQueue[T]) AddRateLimited(item T) {
+func (q InstrumentedQueue[T]) AddRateLimited(item T) {
 	q.lock.Lock()
 	defer q.lock.Unlock()
 
@@ -136,7 +136,7 @@ func (q TracingQueue[T]) AddRateLimited(item T) {
 	}
 }
 
-func (q TracingQueue[T]) Done(item T) {
+func (q InstrumentedQueue[T]) Done(item T) {
 	capsule, ok := q.metamap[item]
 	if !ok {
 		return
@@ -149,7 +149,7 @@ func (q TracingQueue[T]) Done(item T) {
 	delete(q.metamap, item)
 }
 
-func (q TracingQueue[T]) Forget(item T) {
+func (q InstrumentedQueue[T]) Forget(item T) {
 	capsule, ok := q.metamap[item]
 	if !ok {
 		return
@@ -162,7 +162,7 @@ func (q TracingQueue[T]) Forget(item T) {
 	delete(q.metamap, item)
 }
 
-func (q TracingQueue[T]) Get() (item T, shutdown bool) {
+func (q InstrumentedQueue[T]) Get() (item T, shutdown bool) {
 	pointerToItem, shutdown := q.internalQueue.Get()
 	if pointerToItem == nil {
 		var zero T
@@ -173,11 +173,11 @@ func (q TracingQueue[T]) Get() (item T, shutdown bool) {
 	return item, shutdown
 }
 
-func (q TracingQueue[T]) Len() int {
+func (q InstrumentedQueue[T]) Len() int {
 	return q.internalQueue.Len()
 }
 
-func (q TracingQueue[T]) NumRequeues(item T) int {
+func (q InstrumentedQueue[T]) NumRequeues(item T) int {
 	capsule, ok := q.metamap[item]
 	if !ok {
 		return 0
@@ -186,19 +186,19 @@ func (q TracingQueue[T]) NumRequeues(item T) int {
 	return q.internalQueue.NumRequeues(capsule.Object.Value())
 }
 
-func (q TracingQueue[T]) ShutDown() {
+func (q InstrumentedQueue[T]) ShutDown() {
 	q.internalQueue.ShutDown()
 }
 
-func (q TracingQueue[T]) ShutDownWithDrain() {
+func (q InstrumentedQueue[T]) ShutDownWithDrain() {
 	q.internalQueue.ShutDownWithDrain()
 }
 
-func (q TracingQueue[T]) ShuttingDown() bool {
+func (q InstrumentedQueue[T]) ShuttingDown() bool {
 	return q.internalQueue.ShuttingDown()
 }
 
-func (q TracingQueue[T]) AddWithOpts(o priorityqueue.AddOpts, Items ...T) {
+func (q InstrumentedQueue[T]) AddWithOpts(o priorityqueue.AddOpts, Items ...T) {
 	pq, ok := q.internalQueue.(priorityqueue.PriorityQueue[*T])
 	if ok {
 		q.lock.Lock()
@@ -238,7 +238,7 @@ func (q TracingQueue[T]) AddWithOpts(o priorityqueue.AddOpts, Items ...T) {
 	}
 }
 
-func (q TracingQueue[T]) GetWithPriority() (item T, priority int, shutdown bool) {
+func (q InstrumentedQueue[T]) GetWithPriority() (item T, priority int, shutdown bool) {
 	pq, ok := q.internalQueue.(priorityqueue.PriorityQueue[*T])
 	if ok {
 		pointerToItem, priority, shutdown := pq.GetWithPriority()

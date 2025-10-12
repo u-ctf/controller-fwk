@@ -1,4 +1,4 @@
-package library
+package ctrlfwk
 
 const (
 	ConditionTypeReady = "Ready"

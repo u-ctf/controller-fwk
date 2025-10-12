@@ -1,4 +1,4 @@
-package tracing
+package instrument
 
 import (
 	"context"
@@ -10,16 +10,16 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 )
 
-type tracingPredicate struct {
-	tracer    *tracer
+type instrumentedPredicate struct {
+	tracer    *instrumenter
 	inner     predicate.Predicate
 	innerName string
 }
 
-var _ predicate.Predicate = &tracingPredicate{}
+var _ predicate.Predicate = &instrumentedPredicate{}
 
-func NewTracingPredicate(tracer *tracer, inner predicate.Predicate) predicate.Predicate {
-	return &tracingPredicate{
+func NewInstrumentedPredicate(tracer *instrumenter, inner predicate.Predicate) predicate.Predicate {
+	return &instrumentedPredicate{
 		tracer:    tracer,
 		inner:     inner,
 		innerName: fmt.Sprintf("%T", inner),
@@ -27,7 +27,7 @@ func NewTracingPredicate(tracer *tracer, inner predicate.Predicate) predicate.Pr
 }
 
 // Create returns true if the Create event should be processed
-func (p *tracingPredicate) Create(event event.TypedCreateEvent[client.Object]) bool {
+func (p *instrumentedPredicate) Create(event event.TypedCreateEvent[client.Object]) bool {
 	hub := p.tracer.GetOrCreateSentryHubForEvent(event)
 	ctx := context.Background()
 	ctx = sentry.SetHubOnContext(ctx, hub)
@@ -50,7 +50,7 @@ func (p *tracingPredicate) Create(event event.TypedCreateEvent[client.Object]) b
 }
 
 // Delete returns true if the Delete event should be processed
-func (p *tracingPredicate) Delete(event event.TypedDeleteEvent[client.Object]) bool {
+func (p *instrumentedPredicate) Delete(event event.TypedDeleteEvent[client.Object]) bool {
 	hub := p.tracer.GetOrCreateSentryHubForEvent(event)
 	ctx := context.Background()
 	ctx = sentry.SetHubOnContext(ctx, hub)
@@ -73,7 +73,7 @@ func (p *tracingPredicate) Delete(event event.TypedDeleteEvent[client.Object]) b
 }
 
 // Update returns true if the Update event should be processed
-func (p *tracingPredicate) Update(event event.TypedUpdateEvent[client.Object]) bool {
+func (p *instrumentedPredicate) Update(event event.TypedUpdateEvent[client.Object]) bool {
 	hub := p.tracer.GetOrCreateSentryHubForEvent(event)
 	ctx := context.Background()
 	ctx = sentry.SetHubOnContext(ctx, hub)
@@ -96,7 +96,7 @@ func (p *tracingPredicate) Update(event event.TypedUpdateEvent[client.Object]) b
 }
 
 // Generic returns true if the Generic event should be processed
-func (p *tracingPredicate) Generic(event event.TypedGenericEvent[client.Object]) bool {
+func (p *instrumentedPredicate) Generic(event event.TypedGenericEvent[client.Object]) bool {
 	hub := p.tracer.GetOrCreateSentryHubForEvent(event)
 	ctx := context.Background()
 	ctx = sentry.SetHubOnContext(ctx, hub)

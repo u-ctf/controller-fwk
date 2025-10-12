@@ -1,9 +1,10 @@
-package library_test
+package ctrlfwk_test
 
 import (
 	"encoding/json"
-	"library"
 	"testing"
+
+	ctrlfwk "github.com/yyewolf/controller-fwk"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -45,7 +46,7 @@ func TestContractDecoding(t *testing.T) {
 	var object unstructured.Unstructured
 	json.Unmarshal(jsonData, &object)
 
-	c, err := library.GetContract[ExampleObjectContract](&object, "contract")
+	c, err := ctrlfwk.GetContract[ExampleObjectContract](&object, "contract")
 	if err != nil {
 		t.Fatalf("Failed to marshal contract: %v", err)
 	}
