@@ -1,4 +1,4 @@
-module github.com/yyewolf/controller-fwk
+module github.com/u-ctf/controller-fwk
 
 go 1.25
 
@@ -7,7 +7,6 @@ require (
 	github.com/go-logr/logr v1.4.2
 	github.com/go-viper/mapstructure/v2 v2.2.1
 	github.com/pkg/errors v0.9.1
-	github.com/rxwycdh/rxhash v0.0.0-20230131062142-10b7a38b400d
 	github.com/wI2L/jsondiff v0.7.0
 	go.uber.org/mock v0.6.0
 	k8s.io/api v0.32.1

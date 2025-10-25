@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	"github.com/go-logr/logr"
-	"github.com/yyewolf/controller-fwk/mocks"
+	"github.com/u-ctf/controller-fwk/mocks"
 	"go.uber.org/mock/gomock"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/builder"

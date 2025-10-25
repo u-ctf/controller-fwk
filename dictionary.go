@@ -1,22 +1,10 @@
 package ctrlfwk
 
 const (
-	ConditionTypeReady = "Ready"
-)
-
-const (
-	ReasonReconciling = "Reconciling"
-	ReasonReconciled  = "Reconciled"
-	ReasonFinalizing  = "Finalizing"
-	ReasonUnknown     = "Unknown"
-	ReasonNotFound    = "NotFound"
-)
-
-const (
-	StepFindControllerResource = "FindControllerResource"
-	StepResolveDependency      = "ResolveDependency%s"
-	StepResolveDependencies    = "ResolveDependencies"
-	StepReconcileChild         = "ReconcileChild%s"
-	StepReconcileChildren      = "ReconcileChildren"
-	StepEndReconciliation      = "EndReconciliation"
+	StepFindControllerCustomResource = "find controller custom resource"
+	StepResolveDependency            = "resolve dependency %s"
+	StepResolveDependencies          = "resolve dependencies"
+	StepReconcileChild               = "reconcile child %s"
+	StepReconcileChildren            = "reconcile children"
+	StepEndReconciliation            = "end reconciliation"
 )

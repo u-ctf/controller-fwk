@@ -1,6 +1,7 @@
 package ctrlfwk
 
 import (
+	"fmt"
 	"reflect"
 
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -10,12 +11,13 @@ import (
 )
 
 type GenericDependencyResource interface {
+	ID() string
 	New() client.Object
 	Key() types.NamespacedName
 	Set(obj client.Object)
 	Get() client.Object
-	Status(obj client.Object) *Status
 	ShouldWaitForReady() bool
+	IsReady() bool
 	IsOptional() bool
 	Kind() string
 }
@@ -23,25 +25,26 @@ type GenericDependencyResource interface {
 var _ GenericDependencyResource = &DependencyResource[client.Object]{}
 
 type DependencyResource[T client.Object] struct {
-	statusGetter func(T) *Status
-	output       T
-	isOptional   bool
-	waitForReady bool
-	name         string
-	namespace    string
+	userIdentifier string
+	isReadyF       func(obj T) bool
+	output         T
+	isOptional     bool
+	waitForReady   bool
+	name           string
+	namespace      string
 }
 
 type DependencyResourceOption[T client.Object] func(*DependencyResource[T])
 
-func WithDependencyStatusGetter[T client.Object](f func(T) *Status) DependencyResourceOption[T] {
-	return func(c *DependencyResource[T]) {
-		c.statusGetter = f
-	}
-}
-
 func WithOutput[T client.Object](obj T) DependencyResourceOption[T] {
 	return func(c *DependencyResource[T]) {
 		c.output = obj
+	}
+}
+
+func WithIsReadyFunc[T client.Object](f func(obj T) bool) DependencyResourceOption[T] {
+	return func(c *DependencyResource[T]) {
+		c.isReadyF = f
 	}
 }
 
@@ -70,9 +73,7 @@ func WithWaitForReady[T client.Object](waitForReady bool) DependencyResourceOpti
 }
 
 func NewDependencyResource[T client.Object](_ T, opts ...DependencyResourceOption[T]) *DependencyResource[T] {
-	c := &DependencyResource[T]{
-		statusGetter: DefaultStatusGetter[T],
-	}
+	c := &DependencyResource[T]{}
 
 	for _, opt := range opts {
 		opt(c)
@@ -103,10 +104,6 @@ func (c *DependencyResource[T]) Get() client.Object {
 	return c.output
 }
 
-func (c *DependencyResource[T]) Status(obj client.Object) *Status {
-	return c.statusGetter(obj.(T))
-}
-
 func (c *DependencyResource[T]) IsOptional() bool {
 	return c.isOptional
 }
@@ -118,8 +115,22 @@ func (c *DependencyResource[T]) Key() types.NamespacedName {
 	}
 }
 
+func (c *DependencyResource[T]) ID() string {
+	if c.userIdentifier != "" {
+		return c.userIdentifier
+	}
+	return fmt.Sprintf("%v,%v", c.Kind(), c.Key())
+}
+
 func (c *DependencyResource[T]) ShouldWaitForReady() bool {
 	return c.waitForReady
+}
+
+func (c *DependencyResource[T]) IsReady() bool {
+	if c.isReadyF != nil {
+		return c.isReadyF(c.output)
+	}
+	return false
 }
 
 type UntypedDependencyResource struct {
@@ -141,4 +152,8 @@ func (c *UntypedDependencyResource) New() client.Object {
 	obj.SetAPIVersion(c.gvk.GroupVersion().String())
 	obj.SetKind(c.gvk.Kind)
 	return obj
+}
+
+func (c *UntypedDependencyResource) Kind() string {
+	return c.gvk.Kind
 }

@@ -3,19 +3,8 @@ package ctrlfwk
 import (
 	"reflect"
 
-	"k8s.io/apimachinery/pkg/api/meta"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
-
-func (status *Status) FindOrDefaultCondition(def metav1.Condition) (cond *metav1.Condition, defaulted bool) {
-	cond = meta.FindStatusCondition(status.Conditions, def.Type)
-	if cond != nil {
-		return cond, false
-	}
-
-	return &def, true
-}
 
 func NewInstanceOf[ObjectType client.Object](object ObjectType) ObjectType {
 	var newChild ObjectType
@@ -34,7 +23,7 @@ func NewInstanceOf[ObjectType client.Object](object ObjectType) ObjectType {
 }
 
 func isFinalizing[
-	ControllerResourceType ControllerResource,
+	ControllerResourceType ControllerCustomResource,
 ](
 	reconciler Reconciler[ControllerResourceType],
 ) bool {

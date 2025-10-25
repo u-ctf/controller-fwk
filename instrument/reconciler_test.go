@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"github.com/getsentry/sentry-go"
-	"github.com/yyewolf/controller-fwk/mocks"
+	"github.com/u-ctf/controller-fwk/mocks"
 	"go.uber.org/mock/gomock"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"

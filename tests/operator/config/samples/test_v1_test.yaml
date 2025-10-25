@@ -1,0 +1,11 @@
+apiVersion: test.example.com/v1
+kind: Test
+metadata:
+  name: test-sample
+spec:
+  configMap:
+    enabled: false
+    name: test-configmap
+    data:
+      key1: value23ess
+      key2: value3eed

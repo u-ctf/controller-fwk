@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"testing"
 
-	ctrlfwk "github.com/yyewolf/controller-fwk"
+	ctrlfwk "github.com/u-ctf/controller-fwk"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"

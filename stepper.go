@@ -44,12 +44,11 @@ func NewStepper(logger logr.Logger, opts ...StepperOptions) *Stepper {
 type StepResult struct {
 	earlyReturn  bool
 	err          error
-	requeue      bool
 	requeueAfter time.Duration
 }
 
 func (result StepResult) ShouldReturn() bool {
-	return result.err != nil || result.requeue || result.requeueAfter > 0 || result.earlyReturn
+	return result.err != nil || result.requeueAfter > 0 || result.earlyReturn
 }
 
 func (result StepResult) FromSubStep() StepResult {
@@ -60,9 +59,6 @@ func (result StepResult) FromSubStep() StepResult {
 func (result StepResult) Normal() (ctrl.Result, error) {
 	if result.err != nil {
 		return ctrl.Result{}, result.err
-	}
-	if result.requeue {
-		return ctrl.Result{Requeue: true}, nil
 	}
 	if result.requeueAfter > 0 {
 		return ctrl.Result{RequeueAfter: result.requeueAfter}, nil
@@ -78,14 +74,7 @@ func ResultInError(err error) StepResult {
 
 func ResultRequeueIn(result time.Duration) StepResult {
 	return StepResult{
-		requeue:      true,
 		requeueAfter: result,
-	}
-}
-
-func ResultRequeue() StepResult {
-	return StepResult{
-		requeue: true,
 	}
 }
 
@@ -104,10 +93,10 @@ type Step struct {
 	Name string
 
 	// Step is the function to execute
-	Step func(ctx context.Context, req ctrl.Request) StepResult
+	Step func(ctx context.Context, logger logr.Logger, req ctrl.Request) StepResult
 }
 
-func NewStep(name string, step func(ctx context.Context, req ctrl.Request) StepResult) Step {
+func NewStep(name string, step func(ctx context.Context, logger logr.Logger, req ctrl.Request) StepResult) Step {
 	return Step{
 		Name: name,
 		Step: step,
@@ -126,16 +115,16 @@ func (stepper *Stepper) Execute(ctx context.Context, req ctrl.Request) (ctrl.Res
 		logger.Info("Executing step", "step", step.Name)
 
 		stepStartedAt := time.Now()
-		result := step.Step(ctx, req)
+		result := step.Step(ctx, logger, req)
 		stepDuration := time.Since(stepStartedAt)
 
 		if result.ShouldReturn() {
 			if result.err != nil {
 				logger.Error(result.err, "Error in step", "step", step.Name, "stepDuration", stepDuration)
-			} else if result.requeue {
-				logger.Info("Requeueing after step", "step", step.Name, "stepDuration", stepDuration)
 			} else if result.requeueAfter > 0 {
 				logger.Info("Requeueing after step", "step", step.Name, "after", result.requeueAfter, "stepDuration", stepDuration)
+			} else {
+				logger.Info("Early return after step", "step", step.Name, "stepDuration", stepDuration)
 			}
 			return result.Normal()
 		}

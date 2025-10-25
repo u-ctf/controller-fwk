@@ -1,6 +1,10 @@
 package ctrlfwk
 
-import "sigs.k8s.io/controller-runtime/pkg/client"
+import (
+	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/controller"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
+)
 
 type WatchCacheKey string
 type WatchCacheType string
@@ -14,10 +18,13 @@ type Watcher interface {
 	AddWatchSource(key WatchCacheKey)
 	// IsWatchSource checks if the key is a watch source
 	IsWatchingSource(key WatchCacheKey) bool
+	// GetController returns the controller for the watch cache
+	GetController() controller.TypedController[reconcile.Request]
 }
 
 type WatchCache struct {
-	cache map[WatchCacheKey]bool
+	cache      map[WatchCacheKey]bool
+	controller controller.TypedController[reconcile.Request]
 }
 
 func NewWatchKey(obj client.Object, watchType WatchCacheType) WatchCacheKey {
@@ -37,4 +44,12 @@ func (w *WatchCache) IsWatchingSource(key WatchCacheKey) bool {
 	}
 	_, ok := w.cache[key]
 	return ok
+}
+
+func (w *WatchCache) GetController() controller.TypedController[reconcile.Request] {
+	return w.controller
+}
+
+func (w *WatchCache) SetController(ctrler controller.TypedController[reconcile.Request]) {
+	w.controller = ctrler
 }
