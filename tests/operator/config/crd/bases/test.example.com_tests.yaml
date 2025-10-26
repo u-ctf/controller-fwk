@@ -41,7 +41,7 @@ spec:
             properties:
               configMap:
                 description: configMap specifies the configuration for the ConfigMap
-                  child resource
+                  resource
                 properties:
                   data:
                     additionalProperties:
@@ -132,7 +132,7 @@ spec:
                 x-kubernetes-list-type: map
               configMapStatus:
                 description: configMapStatus provides status information about the
-                  ConfigMap child resource if it has been created.
+                  ConfigMap resource if it has been created.
                 properties:
                   name:
                     description: name is the name of the ConfigMap created

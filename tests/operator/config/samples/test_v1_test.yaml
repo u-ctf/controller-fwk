@@ -4,8 +4,8 @@ metadata:
   name: test-sample
 spec:
   configMap:
-    enabled: false
+    enabled: true
     name: test-configmap
     data:
-      key1: value23ess
-      key2: value3eed
+      key1: value23esss
+      key2: value3eedsdsa

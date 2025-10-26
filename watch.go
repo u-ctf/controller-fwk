@@ -35,7 +35,7 @@ func SetupWatch[
 
 			var predicate predicate.Predicate = predicate.ResourceVersionChangedPredicate{}
 			if !isDependency {
-				predicate = ChildChangedPredicate{}
+				predicate = ResourceChangedPredicate{}
 			}
 
 			// Add the watch source to the reconciler
@@ -58,22 +58,22 @@ func SetupWatch[
 	}
 }
 
-type ChildChangedPredicate struct {
+type ResourceChangedPredicate struct {
 	predicate.Funcs
 }
 
-func (ChildChangedPredicate) Update(e event.UpdateEvent) bool {
+func (ResourceChangedPredicate) Update(e event.UpdateEvent) bool {
 	return e.ObjectOld.GetResourceVersion() != e.ObjectNew.GetResourceVersion()
 }
 
-func (ChildChangedPredicate) Create(e event.CreateEvent) bool {
+func (ResourceChangedPredicate) Create(e event.CreateEvent) bool {
 	return false
 }
 
-func (ChildChangedPredicate) Delete(e event.DeleteEvent) bool {
+func (ResourceChangedPredicate) Delete(e event.DeleteEvent) bool {
 	return true
 }
 
-func (ChildChangedPredicate) Generic(e event.GenericEvent) bool {
+func (ResourceChangedPredicate) Generic(e event.GenericEvent) bool {
 	return true
 }

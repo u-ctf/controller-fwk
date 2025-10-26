@@ -11,7 +11,7 @@ import (
 func NewResolveDynamicDependenciesStep[
 	ControllerResourceType ControllerCustomResource,
 ](
-	reconciler ReconcilerWithDynamicDependencies[ControllerResourceType],
+	reconciler ReconcilerWithDependencies[ControllerResourceType],
 ) Step {
 	return Step{
 		Name: StepResolveDependencies,

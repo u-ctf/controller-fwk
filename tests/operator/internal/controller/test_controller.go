@@ -48,13 +48,13 @@ var _ ctrlfwk.Reconciler[*testv1.Test] = &TestReconciler{}
 // +kubebuilder:rbac:groups=test.example.com,resources=tests/finalizers,verbs=update
 // +kubebuilder:rbac:groups="",resources=configmaps,verbs=get;list;watch;create;update;patch;delete
 
-func (reconciler *TestReconciler) GetDependencies(ctx context.Context, req ctrl.Request) (dependencies []ctrlfwk.GenericDependencyResource, err error) {
+func (reconciler *TestReconciler) GetDependencies(ctx context.Context, req ctrl.Request) (dependencies []ctrlfwk.GenericDependency, err error) {
 	return nil, nil
 }
 
-func (reconciler *TestReconciler) GetChildren(ctx context.Context, req ctrl.Request) ([]ctrlfwk.GenericChildResource, error) {
-	return []ctrlfwk.GenericChildResource{
-		test_children.NewConfigMapChild(reconciler),
+func (reconciler *TestReconciler) GetResources(ctx context.Context, req ctrl.Request) ([]ctrlfwk.GenericResource, error) {
+	return []ctrlfwk.GenericResource{
+		test_children.NewConfigMapResource(reconciler),
 	}, nil
 }
 
@@ -80,7 +80,7 @@ func (reconciler *TestReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 	stepper := ctrlfwk.NewStepper(logger,
 		ctrlfwk.WithStep(ctrlfwk.NewFindControllerCustomResourceStep(newReconciler)),
 		ctrlfwk.WithStep(ctrlfwk.NewResolveDynamicDependenciesStep(newReconciler)),
-		ctrlfwk.WithStep(ctrlfwk.NewReconcileChildrenStep(newReconciler)),
+		ctrlfwk.WithStep(ctrlfwk.NewReconcileResourcesStep(newReconciler)),
 		ctrlfwk.WithStep(ctrlfwk.NewEndStep(newReconciler, ctrlfwk.SetReadyCondition(newReconciler))),
 	)
 

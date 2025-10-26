@@ -8,33 +8,33 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 )
 
-func NewReconcileChildrenStep[
+func NewReconcileResourcesStep[
 	ControllerResourceType ControllerCustomResource,
 ](
-	reconciler ReconcilerWithDynamicChildren[ControllerResourceType],
+	reconciler ReconcilerWithResources[ControllerResourceType],
 ) Step {
 	return Step{
-		Name: StepReconcileChildren,
+		Name: StepReconcileResources,
 		Step: func(ctx context.Context, logger logr.Logger, req ctrl.Request) StepResult {
-			children, err := reconciler.GetChildren(ctx, req)
+			resources, err := reconciler.GetResources(ctx, req)
 			if err != nil {
-				return ResultInError(errors.Wrap(err, "failed to get children"))
+				return ResultInError(errors.Wrap(err, "failed to get resources"))
 			}
 
 			var returnResults []StepResult
 
-			for _, child := range children {
-				subStepLogger := logger.WithValues("child", child.ID())
+			for _, resource := range resources {
+				subStepLogger := logger.WithValues("resource", resource.ID())
 
-				subStepLogger.Info("Reconciling child")
-				subStep := NewReconcileChildStep(reconciler, child)
+				subStepLogger.Info("Reconciling resource")
+				subStep := NewReconcileResourceStep(reconciler, resource)
 				result := subStep.Step(ctx, subStepLogger, req)
 				if result.ShouldReturn() {
-					subStepLogger.Info("Child reconciliation resulted in early return or error")
+					subStepLogger.Info("Resource reconciliation resulted in early return or error")
 					returnResults = append(returnResults, result)
 					continue
 				}
-				subStepLogger.Info("Reconciled child successfully")
+				subStepLogger.Info("Reconciled resource successfully")
 			}
 
 			// Return result errors first

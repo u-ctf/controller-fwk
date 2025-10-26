@@ -10,7 +10,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-type GenericDependencyResource interface {
+type GenericDependency interface {
 	ID() string
 	New() client.Object
 	Key() types.NamespacedName
@@ -22,9 +22,9 @@ type GenericDependencyResource interface {
 	Kind() string
 }
 
-var _ GenericDependencyResource = &DependencyResource[client.Object]{}
+var _ GenericDependency = &Dependency[client.Object]{}
 
-type DependencyResource[T client.Object] struct {
+type Dependency[T client.Object] struct {
 	userIdentifier string
 	isReadyF       func(obj T) bool
 	output         T
@@ -34,46 +34,46 @@ type DependencyResource[T client.Object] struct {
 	namespace      string
 }
 
-type DependencyResourceOption[T client.Object] func(*DependencyResource[T])
+type DependencyResourceOption[T client.Object] func(*Dependency[T])
 
-func WithOutput[T client.Object](obj T) DependencyResourceOption[T] {
-	return func(c *DependencyResource[T]) {
+func DependencyWithOutput[T client.Object](obj T) DependencyResourceOption[T] {
+	return func(c *Dependency[T]) {
 		c.output = obj
 	}
 }
 
-func WithIsReadyFunc[T client.Object](f func(obj T) bool) DependencyResourceOption[T] {
-	return func(c *DependencyResource[T]) {
+func DependencyWithIsReadyFunc[T client.Object](f func(obj T) bool) DependencyResourceOption[T] {
+	return func(c *Dependency[T]) {
 		c.isReadyF = f
 	}
 }
 
-func WithOptional[T client.Object](optional bool) DependencyResourceOption[T] {
-	return func(c *DependencyResource[T]) {
+func DependencyWithOptional[T client.Object](optional bool) DependencyResourceOption[T] {
+	return func(c *Dependency[T]) {
 		c.isOptional = optional
 	}
 }
 
-func WithName[T client.Object](name string) DependencyResourceOption[T] {
-	return func(c *DependencyResource[T]) {
+func DependencyWithName[T client.Object](name string) DependencyResourceOption[T] {
+	return func(c *Dependency[T]) {
 		c.name = name
 	}
 }
 
-func WithNamespace[T client.Object](namespace string) DependencyResourceOption[T] {
-	return func(c *DependencyResource[T]) {
+func DependencyWithNamespace[T client.Object](namespace string) DependencyResourceOption[T] {
+	return func(c *Dependency[T]) {
 		c.namespace = namespace
 	}
 }
 
-func WithWaitForReady[T client.Object](waitForReady bool) DependencyResourceOption[T] {
-	return func(c *DependencyResource[T]) {
+func DependencyWithWaitForReady[T client.Object](waitForReady bool) DependencyResourceOption[T] {
+	return func(c *Dependency[T]) {
 		c.waitForReady = waitForReady
 	}
 }
 
-func NewDependencyResource[T client.Object](_ T, opts ...DependencyResourceOption[T]) *DependencyResource[T] {
-	c := &DependencyResource[T]{}
+func NewDependencyResource[T client.Object](_ T, opts ...DependencyResourceOption[T]) *Dependency[T] {
+	c := &Dependency[T]{}
 
 	for _, opt := range opts {
 		opt(c)
@@ -82,15 +82,15 @@ func NewDependencyResource[T client.Object](_ T, opts ...DependencyResourceOptio
 	return c
 }
 
-func (c *DependencyResource[T]) New() client.Object {
+func (c *Dependency[T]) New() client.Object {
 	return NewInstanceOf(c.output)
 }
 
-func (c *DependencyResource[T]) Kind() string {
+func (c *Dependency[T]) Kind() string {
 	return reflect.TypeOf(c.output).Elem().Name()
 }
 
-func (c *DependencyResource[T]) Set(obj client.Object) {
+func (c *Dependency[T]) Set(obj client.Object) {
 	if reflect.TypeOf(c.output) == reflect.TypeOf(obj) {
 		if reflect.ValueOf(c.output).IsNil() {
 			c.output = reflect.New(reflect.TypeOf(c.output).Elem()).Interface().(T)
@@ -100,33 +100,33 @@ func (c *DependencyResource[T]) Set(obj client.Object) {
 	}
 }
 
-func (c *DependencyResource[T]) Get() client.Object {
+func (c *Dependency[T]) Get() client.Object {
 	return c.output
 }
 
-func (c *DependencyResource[T]) IsOptional() bool {
+func (c *Dependency[T]) IsOptional() bool {
 	return c.isOptional
 }
 
-func (c *DependencyResource[T]) Key() types.NamespacedName {
+func (c *Dependency[T]) Key() types.NamespacedName {
 	return types.NamespacedName{
 		Name:      c.name,
 		Namespace: c.namespace,
 	}
 }
 
-func (c *DependencyResource[T]) ID() string {
+func (c *Dependency[T]) ID() string {
 	if c.userIdentifier != "" {
 		return c.userIdentifier
 	}
 	return fmt.Sprintf("%v,%v", c.Kind(), c.Key())
 }
 
-func (c *DependencyResource[T]) ShouldWaitForReady() bool {
+func (c *Dependency[T]) ShouldWaitForReady() bool {
 	return c.waitForReady
 }
 
-func (c *DependencyResource[T]) IsReady() bool {
+func (c *Dependency[T]) IsReady() bool {
 	if c.isReadyF != nil {
 		return c.isReadyF(c.output)
 	}
@@ -134,14 +134,14 @@ func (c *DependencyResource[T]) IsReady() bool {
 }
 
 type UntypedDependencyResource struct {
-	*DependencyResource[*unstructured.Unstructured]
+	*Dependency[*unstructured.Unstructured]
 	gvk schema.GroupVersionKind
 }
 
 func NewUntypedDependencyResource(gvk schema.GroupVersionKind, opts ...DependencyResourceOption[*unstructured.Unstructured]) *UntypedDependencyResource {
 	c := &UntypedDependencyResource{
-		DependencyResource: NewDependencyResource(&unstructured.Unstructured{}, opts...),
-		gvk:                gvk,
+		Dependency: NewDependencyResource(&unstructured.Unstructured{}, opts...),
+		gvk:        gvk,
 	}
 
 	return c

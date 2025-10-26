@@ -26,14 +26,14 @@ type ReconcilerWithWatcher[ControllerResourceType ControllerCustomResource] inte
 	Watcher
 }
 
-type ReconcilerWithDynamicDependencies[ControllerResourceType ControllerCustomResource] interface {
+type ReconcilerWithDependencies[ControllerResourceType ControllerCustomResource] interface {
 	Reconciler[ControllerResourceType]
 
-	GetDependencies(ctx context.Context, req ctrl.Request) ([]GenericDependencyResource, error)
+	GetDependencies(ctx context.Context, req ctrl.Request) ([]GenericDependency, error)
 }
 
-type ReconcilerWithDynamicChildren[ControllerResourceType ControllerCustomResource] interface {
+type ReconcilerWithResources[ControllerResourceType ControllerCustomResource] interface {
 	Reconciler[ControllerResourceType]
 
-	GetChildren(ctx context.Context, req ctrl.Request) ([]GenericChildResource, error)
+	GetResources(ctx context.Context, req ctrl.Request) ([]GenericResource, error)
 }

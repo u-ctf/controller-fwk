@@ -15,18 +15,18 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-// NewConfigMapChild creates a new ChildResource representing a ConfigMap
-func NewConfigMapChild(reconciler ctrlfwk.Reconciler[*testv1.Test]) *ctrlfwk.ChildResource[*corev1.ConfigMap] {
+// NewConfigMapResource creates a new Resource representing a ConfigMap
+func NewConfigMapResource(reconciler ctrlfwk.Reconciler[*testv1.Test]) *ctrlfwk.Resource[*corev1.ConfigMap] {
 	cr := reconciler.GetCustomResource()
 
-	return ctrlfwk.NewChildResource(
+	return ctrlfwk.NewResource(
 		&corev1.ConfigMap{},
 
-		ctrlfwk.WithChildShouldDelete(&corev1.ConfigMap{}, func() bool {
+		ctrlfwk.ResourceSkipAndDeleteOnCondition(&corev1.ConfigMap{}, func() bool {
 			return !cr.Spec.ConfigMap.Enabled
 		}),
 
-		ctrlfwk.WithChildKeyFunc(&corev1.ConfigMap{}, func() types.NamespacedName {
+		ctrlfwk.ResourceWithKeyFunc(&corev1.ConfigMap{}, func() types.NamespacedName {
 			if !cr.Spec.ConfigMap.Enabled && cr.Status.ConfigMapStatus != nil && cr.Status.ConfigMapStatus.Name != "" {
 				// Use the name from status if the ConfigMap is disabled but still exists
 				return types.NamespacedName{
@@ -41,91 +41,98 @@ func NewConfigMapChild(reconciler ctrlfwk.Reconciler[*testv1.Test]) *ctrlfwk.Chi
 			}
 		}),
 
-		ctrlfwk.WithChildMutator(func(child *corev1.ConfigMap) (err error) {
-			child.Data = make(map[string]string)
+		ctrlfwk.ResourceWithMutator(func(resource *corev1.ConfigMap) (err error) {
+			resource.Data = make(map[string]string)
 			for k, v := range cr.Spec.ConfigMap.Data {
-				child.Data[k] = v
+				resource.Data[k] = v
 			}
 
-			return controllerutil.SetOwnerReference(cr, child, reconciler.Scheme())
+			return controllerutil.SetOwnerReference(cr, resource, reconciler.Scheme())
 		}),
 
-		ctrlfwk.WithChildReadyCheck(func(_ *corev1.ConfigMap) bool { return true }),
+		ctrlfwk.ResourceWithReadinessCondition(func(_ *corev1.ConfigMap) bool { return true }),
 
 		// Update the Status condition on ConfigMap creation
-		ctrlfwk.WithChildOnReconcile(&corev1.ConfigMap{}, func(ctx context.Context) error {
-			if cr.Status.ConfigMapStatus == nil {
-				return nil
-			}
-
+		ctrlfwk.ResourceAfterReconcile(&corev1.ConfigMap{}, func(ctx context.Context, resource *corev1.ConfigMap) error {
+			// This is the following state: The ConfigMap has been disabled
 			if !cr.Spec.ConfigMap.Enabled {
-				changed := meta.RemoveStatusCondition(&cr.Status.Conditions, "ConfigMap")
-				if changed || cr.Status.ConfigMapStatus != nil {
-					cr.Status.ConfigMapStatus = nil
-					return ctrlfwk.PatchCustomResourceStatus(ctx, reconciler)
-				}
-				return nil
+				return CleanupStatusOnConfigMapDeletion(ctx, reconciler)
 			}
 
-			if cr.Spec.ConfigMap.Enabled && cr.Status.ConfigMapStatus.Name != cr.Spec.ConfigMap.Name {
-				oldCM := &corev1.ConfigMap{}
-				oldCM.SetName(cr.Status.ConfigMapStatus.Name)
-				oldCM.SetNamespace(cr.Namespace)
-				if err := reconciler.Delete(ctx, oldCM); client.IgnoreNotFound(err) != nil {
-					return err
-				}
-				cr.Status.ConfigMapStatus = nil
-				return ctrlfwk.PatchCustomResourceStatus(ctx, reconciler)
+			// This would happen on a change from disabled to enabled (or initial creation)
+			if cr.Status.ConfigMapStatus == nil {
+				cr.Status.ConfigMapStatus = &testv1.ConfigMapStatus{}
 			}
 
-			return nil
-		}),
-
-		// Update the Status condition on ConfigMap creation
-		ctrlfwk.WithChildOnCreate(func(ctx context.Context, _ *corev1.ConfigMap) error {
-			cond := meta.FindStatusCondition(cr.Status.Conditions, "ConfigMap")
-			if cond == nil {
-				cond = &metav1.Condition{
-					Type:               "ConfigMap",
-					Status:             metav1.ConditionTrue,
-					ObservedGeneration: cr.Generation,
-					Reason:             "Created",
-				}
-
-				changed := meta.SetStatusCondition(&cr.Status.Conditions, *cond)
-				if !changed {
-					return nil
-				}
+			// This is the following state: The ConfigMap has been renamed
+			if cr.Status.ConfigMapStatus.Name != cr.Spec.ConfigMap.Name {
+				CleanupStatusOnConfigMapDeletion(ctx, reconciler)
 			}
 
-			cr.Status.ConfigMapStatus = &testv1.ConfigMapStatus{
-				Name: cr.Spec.ConfigMap.Name,
-			}
-
-			return ctrlfwk.PatchCustomResourceStatus(ctx, reconciler)
-		}),
-
-		// Update the Status condition on ConfigMap update
-		ctrlfwk.WithChildOnUpdate(func(ctx context.Context, _ *corev1.ConfigMap) error {
-			cond := meta.FindStatusCondition(cr.Status.Conditions, "ConfigMap")
-			if cond == nil {
-				cond = &metav1.Condition{
-					Type:   "ConfigMap",
-					Status: metav1.ConditionTrue,
-					Reason: "Updated",
-				}
-
-				changed := meta.SetStatusCondition(&cr.Status.Conditions, *cond)
-				if !changed {
-					return nil
-				}
-			}
-			cond.Status = metav1.ConditionTrue
-			cond.Reason = "Updated"
-			cond.LastTransitionTime = metav1.Now()
-			cond.ObservedGeneration = cr.Generation
-
-			return ctrlfwk.PatchCustomResourceStatus(ctx, reconciler)
+			// This is the following state: The ConfigMap is up to date
+			return SetStatusConfigMapIsUpToDate(ctx, reconciler)
 		}),
 	)
+}
+
+func CleanupStatusOnConfigMapDeletion(
+	ctx context.Context,
+	reconciler ctrlfwk.Reconciler[*testv1.Test],
+) error {
+	cr := reconciler.GetCustomResource()
+
+	changed := meta.RemoveStatusCondition(&cr.Status.Conditions, "ConfigMap")
+	if changed || cr.Status.ConfigMapStatus != nil {
+		cr.Status.ConfigMapStatus = nil
+		return ctrlfwk.PatchCustomResourceStatus(ctx, reconciler)
+	}
+	return nil
+}
+
+func CleanupConfigMapOnDeletion(
+	ctx context.Context,
+	reconciler ctrlfwk.Reconciler[*testv1.Test],
+) error {
+	cr := reconciler.GetCustomResource()
+
+	if cr.Status.ConfigMapStatus != nil && cr.Status.ConfigMapStatus.Name != "" {
+		cm := &corev1.ConfigMap{}
+		cm.SetName(cr.Status.ConfigMapStatus.Name)
+		cm.SetNamespace(cr.Namespace)
+		if err := reconciler.Delete(ctx, cm); client.IgnoreNotFound(err) != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func SetStatusConfigMapIsUpToDate(
+	ctx context.Context,
+	reconciler ctrlfwk.Reconciler[*testv1.Test],
+) error {
+	cr := reconciler.GetCustomResource()
+
+	cond := meta.FindStatusCondition(cr.Status.Conditions, "ConfigMap")
+	if cond == nil {
+		cond = &metav1.Condition{
+			Type:               "ConfigMap",
+			Status:             metav1.ConditionTrue,
+			ObservedGeneration: cr.Generation,
+			Reason:             "UpToDate",
+		}
+	}
+	newCond := *cond
+
+	newCond.Status = metav1.ConditionTrue
+	newCond.Reason = "UpToDate"
+	newCond.LastTransitionTime = metav1.Now()
+	cr.Status.ConfigMapStatus = &testv1.ConfigMapStatus{
+		Name: cr.Spec.ConfigMap.Name,
+	}
+
+	changed := meta.SetStatusCondition(&cr.Status.Conditions, newCond)
+	if changed {
+		return ctrlfwk.PatchCustomResourceStatus(ctx, reconciler)
+	}
+	return nil
 }

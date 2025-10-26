@@ -6,20 +6,20 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-func NewInstanceOf[ObjectType client.Object](object ObjectType) ObjectType {
-	var newChild ObjectType
-	// Use reflection to create a new instance of the child type
-	childType := reflect.TypeOf(object)
-	if childType == nil {
-		return newChild
+func NewInstanceOf[T client.Object](object T) T {
+	var newObject T
+	// Use reflection to create a new instance of the object type
+	objectType := reflect.TypeOf(object)
+	if objectType == nil {
+		return newObject
 	}
 
-	if childType.Kind() == reflect.Ptr {
-		newChild = reflect.New(childType.Elem()).Interface().(ObjectType)
+	if objectType.Kind() == reflect.Ptr {
+		newObject = reflect.New(objectType.Elem()).Interface().(T)
 	} else {
-		newChild = reflect.New(childType).Interface().(ObjectType)
+		newObject = reflect.New(objectType).Interface().(T)
 	}
-	return newChild
+	return newObject
 }
 
 func isFinalizing[

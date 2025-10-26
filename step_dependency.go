@@ -16,7 +16,7 @@ func newResolveDependencyStep[
 	ControllerResourceType ControllerCustomResource,
 ](
 	reconciler Reconciler[ControllerResourceType],
-	dependency GenericDependencyResource,
+	dependency GenericDependency,
 ) Step {
 	return Step{
 		Name: fmt.Sprintf(StepResolveDependency, dependency.Kind()),

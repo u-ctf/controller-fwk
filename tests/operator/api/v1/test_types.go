@@ -33,7 +33,7 @@ type ConfigMapSpec struct {
 
 // TestSpec defines the desired state of Test
 type TestSpec struct {
-	// configMap specifies the configuration for the ConfigMap child resource
+	// configMap specifies the configuration for the ConfigMap resource
 	ConfigMap ConfigMapSpec `json:"configMap,omitempty"`
 }
 
@@ -58,7 +58,7 @@ type TestStatus struct {
 	// +optional
 	Conditions []metav1.Condition `json:"conditions,omitempty"`
 
-	// configMapStatus provides status information about the ConfigMap child resource if it has been created.
+	// configMapStatus provides status information about the ConfigMap resource if it has been created.
 	ConfigMapStatus *ConfigMapStatus `json:"configMapStatus,omitempty"`
 }
 
