@@ -5,7 +5,7 @@ metadata:
 spec:
   configMap:
     enabled: true
-    name: test-configmap
+    name: test-configmap4
     data:
-      key1: value23esss
-      key2: value3eedsdsa
+      key1: value23essss
+      key2: value3eedsdsad

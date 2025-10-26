@@ -66,7 +66,12 @@ func NewConfigMapResource(reconciler ctrlfwk.Reconciler[*testv1.Test]) *ctrlfwk.
 
 			// This is the following state: The ConfigMap has been renamed
 			if cr.Status.ConfigMapStatus.Name != cr.Spec.ConfigMap.Name {
-				CleanupStatusOnConfigMapDeletion(ctx, reconciler)
+				if err := CleanupConfigMapOnDeletion(ctx, reconciler); err != nil {
+					return err
+				}
+				if err := CleanupStatusOnConfigMapDeletion(ctx, reconciler); err != nil {
+					return err
+				}
 			}
 
 			// This is the following state: The ConfigMap is up to date
@@ -125,7 +130,7 @@ func SetStatusConfigMapIsUpToDate(
 
 	newCond.Status = metav1.ConditionTrue
 	newCond.Reason = "UpToDate"
-	newCond.LastTransitionTime = metav1.Now()
+	newCond.ObservedGeneration = cr.Generation
 	cr.Status.ConfigMapStatus = &testv1.ConfigMapStatus{
 		Name: cr.Spec.ConfigMap.Name,
 	}
