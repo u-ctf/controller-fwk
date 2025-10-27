@@ -12,7 +12,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-func newResolveDependencyStep[
+func NewResolveDependencyStep[
 	ControllerResourceType ControllerCustomResource,
 ](
 	reconciler Reconciler[ControllerResourceType],

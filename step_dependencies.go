@@ -27,7 +27,7 @@ func NewResolveDynamicDependenciesStep[
 				subStepLogger := logger.WithValues("dependency", dependency.ID())
 
 				subStepLogger.Info("Resolving dependency")
-				subStep := newResolveDependencyStep(reconciler, dependency)
+				subStep := NewResolveDependencyStep(reconciler, dependency)
 				result := subStep.Step(ctx, subStepLogger, req)
 				if result.ShouldReturn() {
 					subStepLogger.Info("Dependency resolution resulted in early return or error")

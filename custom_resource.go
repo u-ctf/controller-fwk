@@ -14,6 +14,8 @@ type CustomResource[K client.Object] struct {
 	crInitialized          bool
 }
 
+// GetCleanCustomResource gives back the resource that was stored previously unedited of any changes that the resource may have went through,
+// It is especially useful to generate patches between the time it was first seen and the second time.
 func (cr *CustomResource[K]) GetCleanCustomResource() K {
 	if cr.cleanObjectInitialized {
 		return cr.cleanObject
@@ -26,6 +28,8 @@ func (cr *CustomResource[K]) GetCleanCustomResource() K {
 	return cr.cleanObject.DeepCopyObject().(K)
 }
 
+// GetCustomResource gives back the resource that was stored previously,
+// This resource can be edited as it should always be a client.Object which is a pointer to something
 func (cr *CustomResource[K]) GetCustomResource() K {
 	if cr.crInitialized {
 		return cr.CR
@@ -38,10 +42,12 @@ func (cr *CustomResource[K]) GetCustomResource() K {
 	return cr.CR
 }
 
+// SetCustomResource sets the resource and also the base resource,
+// It should only be used once per reconciliation.
 func (cr *CustomResource[K]) SetCustomResource(key K) {
 	cr.CR = key
+	cr.cleanObject = cr.CR.DeepCopyObject().(K)
+
 	cr.crInitialized = true
-	if reflect.ValueOf(cr.cleanObject).IsNil() {
-		cr.cleanObject = cr.CR.DeepCopyObject().(K)
-	}
+	cr.cleanObjectInitialized = true
 }

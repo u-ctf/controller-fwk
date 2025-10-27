@@ -52,3 +52,20 @@ func TestNewCustomResource_CleanIsImmutable(t *testing.T) {
 		t.Fatalf("expected clean resource name to be 'test-name', got '%s'", cleanObject2.GetName())
 	}
 }
+
+func TestNewCustomResource_CleanIsResetable(t *testing.T) {
+	cr := &ctrlfwk.CustomResource[*unstructured.Unstructured]{}
+
+	var resource unstructured.Unstructured
+	resource.SetName("test-name")
+	cr.SetCustomResource(&resource)
+
+	var resource2 unstructured.Unstructured
+	resource2.SetName("test-name2")
+	cr.SetCustomResource(&resource2)
+
+	cleanObject := cr.GetCleanCustomResource()
+	if cleanObject.GetName() != "test-name2" {
+		t.Fatalf("expected clean resource name to be 'test-name2', got '%s'", cleanObject.GetName())
+	}
+}
