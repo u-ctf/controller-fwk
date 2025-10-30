@@ -3,9 +3,25 @@ kind: Test
 metadata:
   name: test-sample
 spec:
+  dependencies:
+    secret:
+      name: test-secret4
+      namespace: default
   configMap:
     enabled: true
     name: test-configmap4
     data:
       key1: value23essss
       key2: value3eedsdsad
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: test-secret4
+  namespace: default
+  annotations:
+    multi.ch/managed-by: '[{"name":"test-sample","namespace":"default","gvk":{"Group":"test.example.com","Version":"v1","Kind":"Test"}}]'
+type: Opaque
+data:
+  username: dGVzdC11c2VybmFtZQ==
+  ready: dHJ1ZQ==

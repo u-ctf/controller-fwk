@@ -1,0 +1,54 @@
+when:
+- event: push
+  branch: main
+
+steps:
+- name: publish-e2e-image
+  image: woodpeckerci/plugin-docker-buildx
+  settings:
+    platforms:
+    - linux/amd64
+    repo: registry.yewolf.fr/u-ctf/controller-fwk-e2e
+    registry: registry.yewolf.fr
+    dockerfile: Dockerfile
+    context: .
+    cache_from:
+    - type=registry\\,ref=registry.yewolf.fr/u-ctf/controller-fwk-e2e:cache
+    cache_to: type=registry,ref=registry.yewolf.fr/u-ctf/controller-fwk-e2e:cache
+    auto_tag: true
+    username:
+      from_secret: REGISTRY_USERNAME
+    password:
+      from_secret: REGISTRY_PASSWORD
+
+- name: "e2e-tests"
+  image: registry.yewolf.fr/u-ctf/controller-fwk-e2e:latest
+  backend_options:
+    kubernetes:
+      runtimeClassName: "sysbox-runc"
+  commands:
+  # Start docker daemon
+  - dockerd --ip6tables=false &
+  - sleep 5
+
+  # Verify installations
+  - kubectl version --client
+  - kind version
+
+  # Wait for Docker to be ready max 2 minutes
+  - timeout 120s bash -c 'until docker info >/dev/null 2>&1; do sleep 1; done'
+  - docker --version
+
+  # Navigate to the operator test directory
+  - cd tests/operator
+
+  # Install Go dependencies
+  - go mod tidy
+
+  # Run e2e tests
+  - make test-e2e
+
+  environment:
+    CGO_ENABLED: 0
+    GOOS: linux
+    GOARCH: amd64

@@ -21,31 +21,58 @@ func NewResolveDependencyStep[
 	return Step{
 		Name: fmt.Sprintf(StepResolveDependency, dependency.Kind()),
 		Step: func(ctx context.Context, logger logr.Logger, req ctrl.Request) StepResult {
-			controller := reconciler.GetCustomResource()
+			var dep client.Object
 
-			depKey := dependency.Key()
-			dep := dependency.New()
-			dep.SetName(depKey.Name)
-			dep.SetNamespace(depKey.Namespace)
-
-			err := reconciler.Get(ctx, depKey, dep)
-			if err != nil {
-				if client.IgnoreNotFound(err) != nil {
-					return ResultInError(errors.Wrap(err, "failed to get dependency resource"))
+			funcResult := func() StepResult {
+				if err := dependency.BeforeReconcile(ctx); err != nil {
+					return ResultInError(errors.Wrap(err, "failed to run BeforeReconcile hook"))
 				}
 
+				controller := reconciler.GetCustomResource()
+
+				depKey := dependency.Key()
+				dep = dependency.New()
+
+				err := reconciler.Get(ctx, depKey, dep)
+				if err != nil {
+					if client.IgnoreNotFound(err) != nil {
+						return ResultInError(errors.Wrap(err, "failed to get dependency resource"))
+					}
+
+					if isFinalizing(reconciler) {
+						return ResultSuccess()
+					}
+
+					return ResultRequeueIn(30 * time.Second)
+				}
+				cleanDep := dep.DeepCopyObject().(client.Object)
+
+				dependency.Set(dep)
+
 				if isFinalizing(reconciler) {
+					changed, err := RemoveManagedBy(dep, controller, reconciler.GetScheme())
+					if err != nil {
+						return ResultInError(err)
+					}
+					if changed {
+						if err := reconciler.Patch(ctx, dep, client.MergeFrom(cleanDep)); err != nil {
+							return ResultInError(err)
+						}
+					}
+
 					return ResultSuccess()
 				}
 
-				return ResultRequeueIn(30 * time.Second)
-			}
-			cleanDep := dep.DeepCopyObject().(client.Object)
+				// Setup watch if we can
+				reconcilerWithWatcher, ok := reconciler.(ReconcilerWithWatcher[ControllerResourceType])
+				if ok {
+					result := SetupWatch(reconcilerWithWatcher, dep, true)(ctx, req)
+					if result.ShouldReturn() {
+						return result.FromSubStep()
+					}
+				}
 
-			dependency.Set(dep)
-
-			if isFinalizing(reconciler) {
-				changed, err := RemoveManagedBy(dep, controller, reconciler.GetScheme())
+				changed, err := AddManagedBy(dep, controller, reconciler.GetScheme())
 				if err != nil {
 					return ResultInError(err)
 				}
@@ -55,33 +82,18 @@ func NewResolveDependencyStep[
 					}
 				}
 
+				if dependency.ShouldWaitForReady() && !dependency.IsReady() {
+					return ResultRequeueIn(30 * time.Second)
+				}
+
 				return ResultSuccess()
+			}()
+
+			if err := dependency.AfterReconcile(ctx, dep); err != nil {
+				return ResultInError(errors.Wrap(err, "failed to run AfterReconcile hook"))
 			}
 
-			// Setup watch if we can
-			reconcilerWithWatcher, ok := reconciler.(ReconcilerWithWatcher[ControllerResourceType])
-			if ok {
-				result := SetupWatch(reconcilerWithWatcher, dep, true)(ctx, req)
-				if result.ShouldReturn() {
-					return result.FromSubStep()
-				}
-			}
-
-			changed, err := AddManagedBy(dep, controller, reconciler.GetScheme())
-			if err != nil {
-				return ResultInError(err)
-			}
-			if changed {
-				if err := reconciler.Patch(ctx, dep, client.MergeFrom(cleanDep)); err != nil {
-					return ResultInError(err)
-				}
-			}
-
-			if dependency.ShouldWaitForReady() && !dependency.IsReady() {
-				return ResultRequeueIn(30 * time.Second)
-			}
-
-			return ResultSuccess()
+			return funcResult
 		},
 	}
 }

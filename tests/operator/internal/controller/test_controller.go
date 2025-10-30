@@ -28,7 +28,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 
 	testv1 "operator/api/v1"
-	test_children "operator/internal/controller/test/children"
+	test_dependencies "operator/internal/controller/test/dependencies"
+	test_resources "operator/internal/controller/test/resources"
 )
 
 // TestReconciler reconciles a Test object
@@ -47,14 +48,17 @@ var _ ctrlfwk.Reconciler[*testv1.Test] = &TestReconciler{}
 // +kubebuilder:rbac:groups=test.example.com,resources=tests/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups=test.example.com,resources=tests/finalizers,verbs=update
 // +kubebuilder:rbac:groups="",resources=configmaps,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups="",resources=secrets,verbs=get;list;watch;patch
 
 func (reconciler *TestReconciler) GetDependencies(ctx context.Context, req ctrl.Request) (dependencies []ctrlfwk.GenericDependency, err error) {
-	return nil, nil
+	return []ctrlfwk.GenericDependency{
+		test_dependencies.NewSecretDependency(reconciler),
+	}, nil
 }
 
 func (reconciler *TestReconciler) GetResources(ctx context.Context, req ctrl.Request) ([]ctrlfwk.GenericResource, error) {
 	return []ctrlfwk.GenericResource{
-		test_children.NewConfigMapResource(reconciler),
+		test_resources.NewConfigMapResource(reconciler),
 	}, nil
 }
 
