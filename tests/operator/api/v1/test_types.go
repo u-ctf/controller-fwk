@@ -20,6 +20,19 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+type SecretDependency struct {
+	// name is the name of the Secret dependency
+	Name string `json:"name,omitempty"`
+
+	// namespace is the namespace of the Secret dependency
+	Namespace string `json:"namespace,omitempty"`
+}
+
+type TestDependencies struct {
+	// secret specifies the configuration for the Secret dependency
+	Secret SecretDependency `json:"secret,omitempty"`
+}
+
 type ConfigMapSpec struct {
 	// enabled indicates whether the ConfigMap should be created
 	Enabled bool `json:"enabled,omitempty"`
@@ -33,6 +46,9 @@ type ConfigMapSpec struct {
 
 // TestSpec defines the desired state of Test
 type TestSpec struct {
+	// dependencies specifies the dependencies required by the Test resource
+	Dependencies TestDependencies `json:"dependencies,omitempty"`
+
 	// configMap specifies the configuration for the ConfigMap resource
 	ConfigMap ConfigMapSpec `json:"configMap,omitempty"`
 }

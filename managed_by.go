@@ -139,8 +139,8 @@ func GetManagedByReconcileRequests(ownedBy client.Object, scheme *runtime.Scheme
 
 			requests = append(requests, reconcile.Request{
 				NamespacedName: types.NamespacedName{
-					Namespace: ref.Name,
-					Name:      ref.Namespace,
+					Name:      ref.Name,
+					Namespace: ref.Namespace,
 				},
 			})
 		}

@@ -1,4 +1,4 @@
-package test_children
+package test_resources
 
 import (
 	"context"
@@ -19,14 +19,11 @@ import (
 func NewConfigMapResource(reconciler ctrlfwk.Reconciler[*testv1.Test]) *ctrlfwk.Resource[*corev1.ConfigMap] {
 	cr := reconciler.GetCustomResource()
 
-	return ctrlfwk.NewResource(
-		&corev1.ConfigMap{},
-
-		ctrlfwk.ResourceSkipAndDeleteOnCondition(&corev1.ConfigMap{}, func() bool {
+	return ctrlfwk.NewResourceBuilder(&corev1.ConfigMap{}).
+		WithSkipAndDeleteOnCondition(func() bool {
 			return !cr.Spec.ConfigMap.Enabled
-		}),
-
-		ctrlfwk.ResourceWithKeyFunc(&corev1.ConfigMap{}, func() types.NamespacedName {
+		}).
+		WithKeyFunc(func() types.NamespacedName {
 			if !cr.Spec.ConfigMap.Enabled && cr.Status.ConfigMapStatus != nil && cr.Status.ConfigMapStatus.Name != "" {
 				// Use the name from status if the ConfigMap is disabled but still exists
 				return types.NamespacedName{
@@ -39,21 +36,17 @@ func NewConfigMapResource(reconciler ctrlfwk.Reconciler[*testv1.Test]) *ctrlfwk.
 				Name:      cr.Spec.ConfigMap.Name,
 				Namespace: cr.Namespace,
 			}
-		}),
-
-		ctrlfwk.ResourceWithMutator(func(resource *corev1.ConfigMap) (err error) {
+		}).
+		WithMutator(func(resource *corev1.ConfigMap) (err error) {
 			resource.Data = make(map[string]string)
 			for k, v := range cr.Spec.ConfigMap.Data {
 				resource.Data[k] = v
 			}
 
 			return controllerutil.SetOwnerReference(cr, resource, reconciler.Scheme())
-		}),
-
-		ctrlfwk.ResourceWithReadinessCondition(func(_ *corev1.ConfigMap) bool { return true }),
-
-		// Update the Status condition on ConfigMap creation
-		ctrlfwk.ResourceAfterReconcile(&corev1.ConfigMap{}, func(ctx context.Context, resource *corev1.ConfigMap) error {
+		}).
+		WithReadinessCondition(func(_ *corev1.ConfigMap) bool { return true }).
+		WithAfterReconcile(func(ctx context.Context, resource *corev1.ConfigMap) error {
 			// This is the following state: The ConfigMap has been disabled
 			if !cr.Spec.ConfigMap.Enabled {
 				return CleanupStatusOnConfigMapDeletion(ctx, reconciler)
@@ -76,8 +69,8 @@ func NewConfigMapResource(reconciler ctrlfwk.Reconciler[*testv1.Test]) *ctrlfwk.
 
 			// This is the following state: The ConfigMap is up to date
 			return SetStatusConfigMapIsUpToDate(ctx, reconciler)
-		}),
-	)
+		}).
+		Build()
 }
 
 func CleanupStatusOnConfigMapDeletion(

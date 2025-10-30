@@ -10,6 +10,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/source"
+
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 func SetupWatch[
@@ -21,7 +23,11 @@ func SetupWatch[
 ) func(ctx context.Context, req ctrl.Request) StepResult {
 	return func(ctx context.Context, req ctrl.Request) StepResult {
 		// Setup watch if not already set
-		watchSource := NewWatchKey(object, CacheTypeEnqueueForOwner)
+		var partialObject metav1.PartialObjectMetadata
+		var partialObjectInterface client.Object = &partialObject
+		partialObject.SetGroupVersionKind(object.GetObjectKind().GroupVersionKind())
+
+		watchSource := NewWatchKey(partialObjectInterface, CacheTypeEnqueueForOwner)
 		if !reconciler.IsWatchingSource(watchSource) {
 			requestHandler := handler.EnqueueRequestForOwner(reconciler.GetScheme(), reconciler.GetRESTMapper(), reconciler.GetCustomResource())
 			if isDependency {
@@ -33,18 +39,13 @@ func SetupWatch[
 				requestHandler = handler.EnqueueRequestsFromMapFunc(managedByHandler)
 			}
 
-			var predicate predicate.Predicate = predicate.ResourceVersionChangedPredicate{}
-			if !isDependency {
-				predicate = ResourceChangedPredicate{}
-			}
-
 			// Add the watch source to the reconciler
 			err := reconciler.GetController().Watch(
 				source.Kind(
 					reconciler.GetCache(),
-					object,
+					partialObjectInterface,
 					requestHandler,
-					predicate,
+					ResourceChangedPredicate{},
 				),
 			)
 			if err != nil {

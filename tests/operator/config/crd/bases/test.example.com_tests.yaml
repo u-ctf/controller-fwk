@@ -57,6 +57,22 @@ spec:
                     description: name is the name of the ConfigMap to be created
                     type: string
                 type: object
+              dependencies:
+                description: dependencies specifies the dependencies required by the
+                  Test resource
+                properties:
+                  secret:
+                    description: secret specifies the configuration for the Secret
+                      dependency
+                    properties:
+                      name:
+                        description: name is the name of the Secret dependency
+                        type: string
+                      namespace:
+                        description: namespace is the namespace of the Secret dependency
+                        type: string
+                    type: object
+                type: object
             type: object
           status:
             description: status defines the observed state of Test

@@ -321,6 +321,7 @@ var _ = Describe("Manager", Ordered, func() {
 			var testResource testv1.Test
 			var originalConfigMapName string
 			var originalConfigMapData map[string]string
+			var testSecret *corev1.Secret
 
 			BeforeEach(func() {
 				originalConfigMapName = "test-cm-" + uuid.NewString()[:8]
@@ -328,6 +329,20 @@ var _ = Describe("Manager", Ordered, func() {
 					"key1": "value1",
 					"key2": "value2",
 				}
+
+				// Create a ready secret for ConfigMap tests
+				testSecret = &corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test-cm-secret-" + uuid.NewString()[:8],
+						Namespace: testNamespace.Name,
+					},
+					Data: map[string][]byte{
+						"ready": []byte("true"),
+						"data":  []byte("test-data"),
+					},
+				}
+				err := c.Create(ctx, testSecret)
+				Expect(err).NotTo(HaveOccurred(), "Create the test secret for ConfigMap tests")
 			})
 
 			AfterEach(func() {
@@ -335,6 +350,12 @@ var _ = Describe("Manager", Ordered, func() {
 				if testResource.Name != "" {
 					err := c.Delete(ctx, &testResource)
 					Expect(client.IgnoreNotFound(err)).To(Succeed(), "Cleanup test resource")
+				}
+
+				// Cleanup test secret
+				if testSecret != nil {
+					err := c.Delete(ctx, testSecret)
+					Expect(client.IgnoreNotFound(err)).To(Succeed(), "Cleanup test secret")
 				}
 			})
 
@@ -346,6 +367,12 @@ var _ = Describe("Manager", Ordered, func() {
 						Namespace: testNamespace.Name,
 					},
 					Spec: testv1.TestSpec{
+						Dependencies: testv1.TestDependencies{
+							Secret: testv1.SecretDependency{
+								Name:      testSecret.Name,
+								Namespace: testSecret.Namespace,
+							},
+						},
 						ConfigMap: testv1.ConfigMapSpec{
 							Enabled: false,
 							Name:    originalConfigMapName,
@@ -397,6 +424,12 @@ var _ = Describe("Manager", Ordered, func() {
 						Namespace: testNamespace.Name,
 					},
 					Spec: testv1.TestSpec{
+						Dependencies: testv1.TestDependencies{
+							Secret: testv1.SecretDependency{
+								Name:      testSecret.Name,
+								Namespace: testSecret.Namespace,
+							},
+						},
 						ConfigMap: testv1.ConfigMapSpec{
 							Enabled: true,
 							Name:    originalConfigMapName,
@@ -452,6 +485,12 @@ var _ = Describe("Manager", Ordered, func() {
 						Namespace: testNamespace.Name,
 					},
 					Spec: testv1.TestSpec{
+						Dependencies: testv1.TestDependencies{
+							Secret: testv1.SecretDependency{
+								Name:      testSecret.Name,
+								Namespace: testSecret.Namespace,
+							},
+						},
 						ConfigMap: testv1.ConfigMapSpec{
 							Enabled: true,
 							Name:    originalConfigMapName,
@@ -527,6 +566,12 @@ var _ = Describe("Manager", Ordered, func() {
 						Namespace: testNamespace.Name,
 					},
 					Spec: testv1.TestSpec{
+						Dependencies: testv1.TestDependencies{
+							Secret: testv1.SecretDependency{
+								Name:      testSecret.Name,
+								Namespace: testSecret.Namespace,
+							},
+						},
 						ConfigMap: testv1.ConfigMapSpec{
 							Enabled: true,
 							Name:    originalConfigMapName,
@@ -612,6 +657,12 @@ var _ = Describe("Manager", Ordered, func() {
 						Namespace: testNamespace.Name,
 					},
 					Spec: testv1.TestSpec{
+						Dependencies: testv1.TestDependencies{
+							Secret: testv1.SecretDependency{
+								Name:      testSecret.Name,
+								Namespace: testSecret.Namespace,
+							},
+						},
 						ConfigMap: testv1.ConfigMapSpec{
 							Enabled: true,
 							Name:    originalConfigMapName,
@@ -702,6 +753,12 @@ var _ = Describe("Manager", Ordered, func() {
 						Namespace: testNamespace.Name,
 					},
 					Spec: testv1.TestSpec{
+						Dependencies: testv1.TestDependencies{
+							Secret: testv1.SecretDependency{
+								Name:      testSecret.Name,
+								Namespace: testSecret.Namespace,
+							},
+						},
 						ConfigMap: testv1.ConfigMapSpec{
 							Enabled: true,
 							Name:    originalConfigMapName,
@@ -767,6 +824,12 @@ var _ = Describe("Manager", Ordered, func() {
 						Namespace: testNamespace.Name,
 					},
 					Spec: testv1.TestSpec{
+						Dependencies: testv1.TestDependencies{
+							Secret: testv1.SecretDependency{
+								Name:      testSecret.Name,
+								Namespace: testSecret.Namespace,
+							},
+						},
 						ConfigMap: testv1.ConfigMapSpec{
 							Enabled: true,
 							Name:    originalConfigMapName,
@@ -839,6 +902,740 @@ var _ = Describe("Manager", Ordered, func() {
 					}
 					g.Expect(configMapCondition).To(BeNil(), "ConfigMap condition should be removed when disabled")
 				}, 10*time.Second, 500*time.Millisecond).Should(Succeed())
+			})
+		})
+
+		Context("Secret Dependency Management", func() {
+			var testResource testv1.Test
+			var secretName string
+			var secretNamespace string
+
+			BeforeEach(func() {
+				secretName = "test-secret-" + uuid.NewString()[:8]
+				secretNamespace = testNamespace.Name
+			})
+
+			AfterEach(func() {
+				// Cleanup test resource if it exists
+				if testResource.Name != "" {
+					err := c.Delete(ctx, &testResource)
+					Expect(client.IgnoreNotFound(err)).To(Succeed(), "Cleanup test resource")
+				}
+
+				// Cleanup secret if it exists
+				secret := &corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      secretName,
+						Namespace: secretNamespace,
+					},
+				}
+				err := c.Delete(ctx, secret)
+				Expect(client.IgnoreNotFound(err)).To(Succeed(), "Cleanup secret")
+			})
+
+			It("should set SecretFound condition to False when secret is missing", func() {
+				By("creating Test resource with secret dependency when secret doesn't exist")
+				testResource = testv1.Test{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test-secret-missing-" + uuid.NewString()[:8],
+						Namespace: testNamespace.Name,
+					},
+					Spec: testv1.TestSpec{
+						Dependencies: testv1.TestDependencies{
+							Secret: testv1.SecretDependency{
+								Name:      secretName,
+								Namespace: secretNamespace,
+							},
+						},
+						ConfigMap: testv1.ConfigMapSpec{
+							Enabled: false,
+						},
+					},
+				}
+
+				err := c.Create(ctx, &testResource)
+				Expect(err).NotTo(HaveOccurred(), "Create the Test resource")
+
+				By("verifying SecretFound condition is set to False")
+				Eventually(func(g Gomega) {
+					err := c.Get(ctx, client.ObjectKeyFromObject(&testResource), &testResource)
+					g.Expect(err).NotTo(HaveOccurred(), "Get Test resource")
+
+					// Find SecretFound condition
+					var secretFoundCondition *metav1.Condition
+					for _, cond := range testResource.Status.Conditions {
+						if cond.Type == "SecretFound" {
+							secretFoundCondition = &cond
+							break
+						}
+					}
+					g.Expect(secretFoundCondition).NotTo(BeNil(), "SecretFound condition should exist")
+					g.Expect(secretFoundCondition.Status).To(Equal(metav1.ConditionFalse), "SecretFound condition should be False")
+					g.Expect(secretFoundCondition.Reason).To(Equal("NotFound"), "SecretFound condition reason should be NotFound")
+					g.Expect(secretFoundCondition.Message).To(Equal("The required Secret was not found"), "SecretFound condition message should indicate secret not found")
+				}, 30*time.Second, time.Second).Should(Succeed())
+			})
+
+			It("should work correctly when secret exists and is ready", func() {
+				By("creating a ready secret")
+				secret := &corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      secretName,
+						Namespace: secretNamespace,
+					},
+					Data: map[string][]byte{
+						"ready": []byte("true"),
+						"data":  []byte("secret-data"),
+					},
+				}
+				err := c.Create(ctx, secret)
+				Expect(err).NotTo(HaveOccurred(), "Create the secret")
+
+				By("creating Test resource with secret dependency")
+				testResource = testv1.Test{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test-secret-ready-" + uuid.NewString()[:8],
+						Namespace: testNamespace.Name,
+					},
+					Spec: testv1.TestSpec{
+						Dependencies: testv1.TestDependencies{
+							Secret: testv1.SecretDependency{
+								Name:      secretName,
+								Namespace: secretNamespace,
+							},
+						},
+						ConfigMap: testv1.ConfigMapSpec{
+							Enabled: false,
+						},
+					},
+				}
+
+				err = c.Create(ctx, &testResource)
+				Expect(err).NotTo(HaveOccurred(), "Create the Test resource")
+
+				By("verifying SecretFound condition is not present (indicating success)")
+				Eventually(func(g Gomega) {
+					err := c.Get(ctx, client.ObjectKeyFromObject(&testResource), &testResource)
+					g.Expect(err).NotTo(HaveOccurred(), "Get Test resource")
+
+					// Check that SecretFound condition is not present
+					var secretFoundCondition *metav1.Condition
+					for _, cond := range testResource.Status.Conditions {
+						if cond.Type == "SecretFound" {
+							secretFoundCondition = &cond
+							break
+						}
+					}
+					g.Expect(secretFoundCondition).To(BeNil(), "SecretFound condition should not exist when secret is ready")
+				}, 30*time.Second, time.Second).Should(Succeed())
+			})
+
+			It("should transition from failure to success when secret is added correctly", func() {
+				By("creating Test resource with secret dependency when secret doesn't exist")
+				testResource = testv1.Test{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test-secret-transition-" + uuid.NewString()[:8],
+						Namespace: testNamespace.Name,
+					},
+					Spec: testv1.TestSpec{
+						Dependencies: testv1.TestDependencies{
+							Secret: testv1.SecretDependency{
+								Name:      secretName,
+								Namespace: secretNamespace,
+							},
+						},
+						ConfigMap: testv1.ConfigMapSpec{
+							Enabled: false,
+						},
+					},
+				}
+
+				err := c.Create(ctx, &testResource)
+				Expect(err).NotTo(HaveOccurred(), "Create the Test resource")
+
+				By("verifying SecretFound condition is set to False initially")
+				Eventually(func(g Gomega) {
+					err := c.Get(ctx, client.ObjectKeyFromObject(&testResource), &testResource)
+					g.Expect(err).NotTo(HaveOccurred(), "Get Test resource")
+
+					var secretFoundCondition *metav1.Condition
+					for _, cond := range testResource.Status.Conditions {
+						if cond.Type == "SecretFound" {
+							secretFoundCondition = &cond
+							break
+						}
+					}
+					g.Expect(secretFoundCondition).NotTo(BeNil(), "SecretFound condition should exist")
+					g.Expect(secretFoundCondition.Status).To(Equal(metav1.ConditionFalse), "SecretFound condition should be False")
+				}, 30*time.Second, time.Second).Should(Succeed())
+
+				By("creating the secret with ready key")
+				secret := &corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      secretName,
+						Namespace: secretNamespace,
+					},
+					Data: map[string][]byte{
+						"ready": []byte("true"),
+						"data":  []byte("secret-data"),
+					},
+				}
+				err = c.Create(ctx, secret)
+				Expect(err).NotTo(HaveOccurred(), "Create the secret")
+
+				By("waiting 30 seconds and verifying SecretFound condition is removed")
+				time.Sleep(30 * time.Second)
+				Eventually(func(g Gomega) {
+					err := c.Get(ctx, client.ObjectKeyFromObject(&testResource), &testResource)
+					g.Expect(err).NotTo(HaveOccurred(), "Get Test resource")
+
+					var secretFoundCondition *metav1.Condition
+					for _, cond := range testResource.Status.Conditions {
+						if cond.Type == "SecretFound" {
+							secretFoundCondition = &cond
+							break
+						}
+					}
+					g.Expect(secretFoundCondition).To(BeNil(), "SecretFound condition should be removed when secret becomes ready")
+				}, 30*time.Second, time.Second).Should(Succeed())
+			})
+
+			It("should fail when secret exists but without ready key", func() {
+				By("creating a secret without ready key")
+				secret := &corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      secretName,
+						Namespace: secretNamespace,
+					},
+					Data: map[string][]byte{
+						"data": []byte("secret-data"),
+						// Note: no "ready" key
+					},
+				}
+				err := c.Create(ctx, secret)
+				Expect(err).NotTo(HaveOccurred(), "Create the secret")
+
+				By("creating Test resource with secret dependency")
+				testResource = testv1.Test{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test-secret-not-ready-" + uuid.NewString()[:8],
+						Namespace: testNamespace.Name,
+					},
+					Spec: testv1.TestSpec{
+						Dependencies: testv1.TestDependencies{
+							Secret: testv1.SecretDependency{
+								Name:      secretName,
+								Namespace: secretNamespace,
+							},
+						},
+						ConfigMap: testv1.ConfigMapSpec{
+							Enabled: false,
+						},
+					},
+				}
+
+				err = c.Create(ctx, &testResource)
+				Expect(err).NotTo(HaveOccurred(), "Create the Test resource")
+
+				By("verifying SecretFound condition is set to False")
+				Eventually(func(g Gomega) {
+					err := c.Get(ctx, client.ObjectKeyFromObject(&testResource), &testResource)
+					g.Expect(err).NotTo(HaveOccurred(), "Get Test resource")
+
+					var secretFoundCondition *metav1.Condition
+					for _, cond := range testResource.Status.Conditions {
+						if cond.Type == "SecretFound" {
+							secretFoundCondition = &cond
+							break
+						}
+					}
+					g.Expect(secretFoundCondition).NotTo(BeNil(), "SecretFound condition should exist")
+					g.Expect(secretFoundCondition.Status).To(Equal(metav1.ConditionFalse), "SecretFound condition should be False when secret is not ready")
+				}, 30*time.Second, time.Second).Should(Succeed())
+			})
+
+			It("should handle the complete lifecycle: no secret -> secret without ready -> secret with ready", func() {
+				By("creating Test resource with secret dependency when secret doesn't exist")
+				testResource = testv1.Test{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test-secret-lifecycle-" + uuid.NewString()[:8],
+						Namespace: testNamespace.Name,
+					},
+					Spec: testv1.TestSpec{
+						Dependencies: testv1.TestDependencies{
+							Secret: testv1.SecretDependency{
+								Name:      secretName,
+								Namespace: secretNamespace,
+							},
+						},
+						ConfigMap: testv1.ConfigMapSpec{
+							Enabled: false,
+						},
+					},
+				}
+
+				err := c.Create(ctx, &testResource)
+				Expect(err).NotTo(HaveOccurred(), "Create the Test resource")
+
+				By("verifying SecretFound condition is set to False initially")
+				Eventually(func(g Gomega) {
+					err := c.Get(ctx, client.ObjectKeyFromObject(&testResource), &testResource)
+					g.Expect(err).NotTo(HaveOccurred(), "Get Test resource")
+
+					var secretFoundCondition *metav1.Condition
+					for _, cond := range testResource.Status.Conditions {
+						if cond.Type == "SecretFound" {
+							secretFoundCondition = &cond
+							break
+						}
+					}
+					g.Expect(secretFoundCondition).NotTo(BeNil(), "SecretFound condition should exist")
+					g.Expect(secretFoundCondition.Status).To(Equal(metav1.ConditionFalse), "SecretFound condition should be False")
+				}, 30*time.Second, time.Second).Should(Succeed())
+
+				By("creating secret without ready key")
+				secret := &corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      secretName,
+						Namespace: secretNamespace,
+					},
+					Data: map[string][]byte{
+						"data": []byte("secret-data"),
+						// Note: no "ready" key
+					},
+				}
+				err = c.Create(ctx, secret)
+				Expect(err).NotTo(HaveOccurred(), "Create the secret")
+
+				By("verifying SecretFound condition remains False when secret is not ready")
+				Consistently(func(g Gomega) {
+					err := c.Get(ctx, client.ObjectKeyFromObject(&testResource), &testResource)
+					g.Expect(err).NotTo(HaveOccurred(), "Get Test resource")
+
+					var secretFoundCondition *metav1.Condition
+					for _, cond := range testResource.Status.Conditions {
+						if cond.Type == "SecretFound" {
+							secretFoundCondition = &cond
+							break
+						}
+					}
+					g.Expect(secretFoundCondition).NotTo(BeNil(), "SecretFound condition should exist")
+					g.Expect(secretFoundCondition.Status).To(Equal(metav1.ConditionFalse), "SecretFound condition should remain False when secret is not ready")
+				}, 10*time.Second, time.Second).Should(Succeed())
+
+				By("updating secret to add ready key")
+				err = c.Get(ctx, client.ObjectKeyFromObject(secret), secret)
+				Expect(err).NotTo(HaveOccurred(), "Get the secret for update")
+
+				secret.Data["ready"] = []byte("true")
+				err = c.Update(ctx, secret)
+				Expect(err).NotTo(HaveOccurred(), "Update the secret")
+
+				By("verifying SecretFound condition is removed when secret becomes ready")
+				Eventually(func(g Gomega) {
+					err := c.Get(ctx, client.ObjectKeyFromObject(&testResource), &testResource)
+					g.Expect(err).NotTo(HaveOccurred(), "Get Test resource")
+
+					var secretFoundCondition *metav1.Condition
+					for _, cond := range testResource.Status.Conditions {
+						if cond.Type == "SecretFound" {
+							secretFoundCondition = &cond
+							break
+						}
+					}
+					g.Expect(secretFoundCondition).To(BeNil(), "SecretFound condition should be removed when secret becomes ready")
+				}, 30*time.Second, time.Second).Should(Succeed())
+			})
+
+			It("should handle secret deletion and recreation gracefully", func() {
+				By("creating a ready secret")
+				secret := &corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      secretName,
+						Namespace: secretNamespace,
+					},
+					Data: map[string][]byte{
+						"ready": []byte("true"),
+						"data":  []byte("secret-data"),
+					},
+				}
+				err := c.Create(ctx, secret)
+				Expect(err).NotTo(HaveOccurred(), "Create the secret")
+
+				By("creating Test resource with secret dependency")
+				testResource = testv1.Test{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test-secret-deletion-" + uuid.NewString()[:8],
+						Namespace: testNamespace.Name,
+					},
+					Spec: testv1.TestSpec{
+						Dependencies: testv1.TestDependencies{
+							Secret: testv1.SecretDependency{
+								Name:      secretName,
+								Namespace: secretNamespace,
+							},
+						},
+						ConfigMap: testv1.ConfigMapSpec{
+							Enabled: false,
+						},
+					},
+				}
+
+				err = c.Create(ctx, &testResource)
+				Expect(err).NotTo(HaveOccurred(), "Create the Test resource")
+
+				By("verifying initial success state (no SecretFound condition)")
+				Eventually(func(g Gomega) {
+					err := c.Get(ctx, client.ObjectKeyFromObject(&testResource), &testResource)
+					g.Expect(err).NotTo(HaveOccurred(), "Get Test resource")
+
+					var secretFoundCondition *metav1.Condition
+					for _, cond := range testResource.Status.Conditions {
+						if cond.Type == "SecretFound" {
+							secretFoundCondition = &cond
+							break
+						}
+					}
+					g.Expect(secretFoundCondition).To(BeNil(), "SecretFound condition should not exist when secret is ready")
+				}, 30*time.Second, time.Second).Should(Succeed())
+
+				By("deleting the secret")
+				err = c.Delete(ctx, secret)
+				Expect(err).NotTo(HaveOccurred(), "Delete the secret")
+
+				By("verifying SecretFound condition is set to False after deletion")
+				Eventually(func(g Gomega) {
+					err := c.Get(ctx, client.ObjectKeyFromObject(&testResource), &testResource)
+					g.Expect(err).NotTo(HaveOccurred(), "Get Test resource")
+
+					var secretFoundCondition *metav1.Condition
+					for _, cond := range testResource.Status.Conditions {
+						if cond.Type == "SecretFound" {
+							secretFoundCondition = &cond
+							break
+						}
+					}
+					g.Expect(secretFoundCondition).NotTo(BeNil(), "SecretFound condition should exist after secret deletion")
+					g.Expect(secretFoundCondition.Status).To(Equal(metav1.ConditionFalse), "SecretFound condition should be False after secret deletion")
+				}, 30*time.Second, time.Second).Should(Succeed())
+
+				By("recreating the secret with ready key")
+				newSecret := &corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      secretName,
+						Namespace: secretNamespace,
+					},
+					Data: map[string][]byte{
+						"ready": []byte("true"),
+						"data":  []byte("new-secret-data"),
+					},
+				}
+				err = c.Create(ctx, newSecret)
+				Expect(err).NotTo(HaveOccurred(), "Recreate the secret")
+
+				By("verifying SecretFound condition is removed after recreation")
+				Eventually(func(g Gomega) {
+					err := c.Get(ctx, client.ObjectKeyFromObject(&testResource), &testResource)
+					g.Expect(err).NotTo(HaveOccurred(), "Get Test resource")
+
+					var secretFoundCondition *metav1.Condition
+					for _, cond := range testResource.Status.Conditions {
+						if cond.Type == "SecretFound" {
+							secretFoundCondition = &cond
+							break
+						}
+					}
+					g.Expect(secretFoundCondition).To(BeNil(), "SecretFound condition should be removed when secret is recreated and ready")
+				}, 30*time.Second, time.Second).Should(Succeed())
+			})
+
+			It("should handle cross-namespace secret dependencies", func() {
+				crossNamespace := "cross-ns-" + uuid.NewString()[:8]
+
+				By("creating cross-namespace for secret")
+				crossNS := &corev1.Namespace{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: crossNamespace,
+					},
+				}
+				err := c.Create(ctx, crossNS)
+				Expect(err).NotTo(HaveOccurred(), "Create cross namespace")
+
+				defer func() {
+					// Cleanup cross namespace
+					err := c.Delete(ctx, crossNS)
+					Expect(client.IgnoreNotFound(err)).To(Succeed(), "Cleanup cross namespace")
+				}()
+
+				By("creating a ready secret in different namespace")
+				secret := &corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      secretName,
+						Namespace: crossNamespace,
+					},
+					Data: map[string][]byte{
+						"ready": []byte("true"),
+						"data":  []byte("cross-namespace-data"),
+					},
+				}
+				err = c.Create(ctx, secret)
+				Expect(err).NotTo(HaveOccurred(), "Create the secret in cross namespace")
+
+				By("creating Test resource with cross-namespace secret dependency")
+				testResource = testv1.Test{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test-cross-ns-" + uuid.NewString()[:8],
+						Namespace: testNamespace.Name,
+					},
+					Spec: testv1.TestSpec{
+						Dependencies: testv1.TestDependencies{
+							Secret: testv1.SecretDependency{
+								Name:      secretName,
+								Namespace: crossNamespace,
+							},
+						},
+						ConfigMap: testv1.ConfigMapSpec{
+							Enabled: false,
+						},
+					},
+				}
+
+				err = c.Create(ctx, &testResource)
+				Expect(err).NotTo(HaveOccurred(), "Create the Test resource")
+
+				By("verifying cross-namespace secret dependency works correctly")
+				Eventually(func(g Gomega) {
+					err := c.Get(ctx, client.ObjectKeyFromObject(&testResource), &testResource)
+					g.Expect(err).NotTo(HaveOccurred(), "Get Test resource")
+
+					var secretFoundCondition *metav1.Condition
+					for _, cond := range testResource.Status.Conditions {
+						if cond.Type == "SecretFound" {
+							secretFoundCondition = &cond
+							break
+						}
+					}
+					g.Expect(secretFoundCondition).To(BeNil(), "SecretFound condition should not exist when cross-namespace secret is ready")
+				}, 30*time.Second, time.Second).Should(Succeed())
+			})
+
+			It("should handle many Test resources with same secret dependency", func() {
+				By("creating a shared ready secret")
+				sharedSecret := &corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      secretName,
+						Namespace: secretNamespace,
+					},
+					Data: map[string][]byte{
+						"ready": []byte("true"),
+						"data":  []byte("shared-secret-data"),
+					},
+				}
+				err := c.Create(ctx, sharedSecret)
+				Expect(err).NotTo(HaveOccurred(), "Create the shared secret")
+
+				By("creating multiple Test resources pointing to the same secret")
+				var testResources []testv1.Test
+				numResources := 3
+
+				for i := 0; i < numResources; i++ {
+					testRes := testv1.Test{
+						ObjectMeta: metav1.ObjectMeta{
+							Name:      fmt.Sprintf("test-shared-secret-%d-%s", i, uuid.NewString()[:8]),
+							Namespace: testNamespace.Name,
+						},
+						Spec: testv1.TestSpec{
+							Dependencies: testv1.TestDependencies{
+								Secret: testv1.SecretDependency{
+									Name:      secretName,
+									Namespace: secretNamespace,
+								},
+							},
+							ConfigMap: testv1.ConfigMapSpec{
+								Enabled: false,
+							},
+						},
+					}
+
+					err := c.Create(ctx, &testRes)
+					Expect(err).NotTo(HaveOccurred(), fmt.Sprintf("Create Test resource %d", i))
+					testResources = append(testResources, testRes)
+				}
+
+				By("verifying all Test resources have no SecretFound condition (indicating success)")
+				for i, testRes := range testResources {
+					Eventually(func(g Gomega) {
+						err := c.Get(ctx, client.ObjectKeyFromObject(&testRes), &testRes)
+						g.Expect(err).NotTo(HaveOccurred(), fmt.Sprintf("Get Test resource %d", i))
+
+						var secretFoundCondition *metav1.Condition
+						for _, cond := range testRes.Status.Conditions {
+							if cond.Type == "SecretFound" {
+								secretFoundCondition = &cond
+								break
+							}
+						}
+						g.Expect(secretFoundCondition).To(BeNil(), fmt.Sprintf("Test resource %d should not have SecretFound condition when secret is ready", i))
+					}, 30*time.Second, time.Second).Should(Succeed())
+				}
+
+				By("updating the shared secret to remove ready key")
+				err = c.Get(ctx, client.ObjectKeyFromObject(sharedSecret), sharedSecret)
+				Expect(err).NotTo(HaveOccurred(), "Get shared secret for update")
+
+				delete(sharedSecret.Data, "ready")
+				err = c.Update(ctx, sharedSecret)
+				Expect(err).NotTo(HaveOccurred(), "Update shared secret to remove ready key")
+
+				By("verifying all Test resources get SecretFound condition set to False")
+				for i, testRes := range testResources {
+					Eventually(func(g Gomega) {
+						err := c.Get(ctx, client.ObjectKeyFromObject(&testRes), &testRes)
+						g.Expect(err).NotTo(HaveOccurred(), fmt.Sprintf("Get Test resource %d", i))
+
+						var secretFoundCondition *metav1.Condition
+						for _, cond := range testRes.Status.Conditions {
+							if cond.Type == "SecretFound" {
+								secretFoundCondition = &cond
+								break
+							}
+						}
+						g.Expect(secretFoundCondition).NotTo(BeNil(), fmt.Sprintf("Test resource %d should have SecretFound condition", i))
+						g.Expect(secretFoundCondition.Status).To(Equal(metav1.ConditionFalse), fmt.Sprintf("Test resource %d SecretFound condition should be False", i))
+					}, 30*time.Second, time.Second).Should(Succeed())
+				}
+
+				By("updating the shared secret to add ready key back")
+				err = c.Get(ctx, client.ObjectKeyFromObject(sharedSecret), sharedSecret)
+				Expect(err).NotTo(HaveOccurred(), "Get shared secret for final update")
+
+				sharedSecret.Data["ready"] = []byte("true")
+				err = c.Update(ctx, sharedSecret)
+				Expect(err).NotTo(HaveOccurred(), "Update shared secret to add ready key back")
+
+				By("verifying all Test resources have SecretFound condition removed")
+				for i, testRes := range testResources {
+					Eventually(func(g Gomega) {
+						err := c.Get(ctx, client.ObjectKeyFromObject(&testRes), &testRes)
+						g.Expect(err).NotTo(HaveOccurred(), fmt.Sprintf("Get Test resource %d", i))
+
+						var secretFoundCondition *metav1.Condition
+						for _, cond := range testRes.Status.Conditions {
+							if cond.Type == "SecretFound" {
+								secretFoundCondition = &cond
+								break
+							}
+						}
+						g.Expect(secretFoundCondition).To(BeNil(), fmt.Sprintf("Test resource %d should not have SecretFound condition when secret is ready again", i))
+					}, 30*time.Second, time.Second).Should(Succeed())
+				}
+
+				By("cleaning up all Test resources")
+				for i, testRes := range testResources {
+					err := c.Delete(ctx, &testRes)
+					Expect(client.IgnoreNotFound(err)).To(Succeed(), fmt.Sprintf("Cleanup Test resource %d", i))
+				}
+			})
+
+			It("should handle secret updates from ready to not ready", func() {
+				By("creating a ready secret")
+				secret := &corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      secretName,
+						Namespace: secretNamespace,
+					},
+					Data: map[string][]byte{
+						"ready": []byte("true"),
+						"data":  []byte("secret-data"),
+					},
+				}
+				err := c.Create(ctx, secret)
+				Expect(err).NotTo(HaveOccurred(), "Create the ready secret")
+
+				By("creating Test resource with secret dependency")
+				testResource = testv1.Test{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test-secret-ready-to-not-ready-" + uuid.NewString()[:8],
+						Namespace: testNamespace.Name,
+					},
+					Spec: testv1.TestSpec{
+						Dependencies: testv1.TestDependencies{
+							Secret: testv1.SecretDependency{
+								Name:      secretName,
+								Namespace: secretNamespace,
+							},
+						},
+						ConfigMap: testv1.ConfigMapSpec{
+							Enabled: false,
+						},
+					},
+				}
+
+				err = c.Create(ctx, &testResource)
+				Expect(err).NotTo(HaveOccurred(), "Create the Test resource")
+
+				By("verifying initial state with ready secret (no SecretFound condition)")
+				Eventually(func(g Gomega) {
+					err := c.Get(ctx, client.ObjectKeyFromObject(&testResource), &testResource)
+					g.Expect(err).NotTo(HaveOccurred(), "Get Test resource")
+
+					var secretFoundCondition *metav1.Condition
+					for _, cond := range testResource.Status.Conditions {
+						if cond.Type == "SecretFound" {
+							secretFoundCondition = &cond
+							break
+						}
+					}
+					g.Expect(secretFoundCondition).To(BeNil(), "SecretFound condition should not exist when secret is ready")
+				}, 30*time.Second, time.Second).Should(Succeed())
+
+				By("updating secret to remove ready key (making it not ready)")
+				err = c.Get(ctx, client.ObjectKeyFromObject(secret), secret)
+				Expect(err).NotTo(HaveOccurred(), "Get secret for update")
+
+				delete(secret.Data, "ready")
+				err = c.Update(ctx, secret)
+				Expect(err).NotTo(HaveOccurred(), "Update secret to remove ready key")
+
+				By("verifying SecretFound condition appears and is set to False")
+				Eventually(func(g Gomega) {
+					err := c.Get(ctx, client.ObjectKeyFromObject(&testResource), &testResource)
+					g.Expect(err).NotTo(HaveOccurred(), "Get Test resource")
+
+					var secretFoundCondition *metav1.Condition
+					for _, cond := range testResource.Status.Conditions {
+						if cond.Type == "SecretFound" {
+							secretFoundCondition = &cond
+							break
+						}
+					}
+					g.Expect(secretFoundCondition).NotTo(BeNil(), "SecretFound condition should exist when secret becomes not ready")
+					g.Expect(secretFoundCondition.Status).To(Equal(metav1.ConditionFalse), "SecretFound condition should be False when secret is not ready")
+					g.Expect(secretFoundCondition.Reason).To(Equal("NotFound"), "SecretFound condition reason should be NotFound")
+				}, 30*time.Second, time.Second).Should(Succeed())
+
+				By("updating secret back to ready=true")
+				err = c.Get(ctx, client.ObjectKeyFromObject(secret), secret)
+				Expect(err).NotTo(HaveOccurred(), "Get secret for restore")
+
+				secret.Data["ready"] = []byte("true")
+				err = c.Update(ctx, secret)
+				Expect(err).NotTo(HaveOccurred(), "Update secret back to ready=true")
+
+				By("verifying SecretFound condition is removed when secret becomes ready again")
+				Eventually(func(g Gomega) {
+					err := c.Get(ctx, client.ObjectKeyFromObject(&testResource), &testResource)
+					g.Expect(err).NotTo(HaveOccurred(), "Get Test resource")
+
+					var secretFoundCondition *metav1.Condition
+					for _, cond := range testResource.Status.Conditions {
+						if cond.Type == "SecretFound" {
+							secretFoundCondition = &cond
+							break
+						}
+					}
+					g.Expect(secretFoundCondition).To(BeNil(), "SecretFound condition should be removed when secret becomes ready again")
+				}, 30*time.Second, time.Second).Should(Succeed())
 			})
 		})
 	})
