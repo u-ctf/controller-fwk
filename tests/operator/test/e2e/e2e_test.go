@@ -303,18 +303,22 @@ var _ = Describe("Manager", Ordered, func() {
 			})
 			Expect(err).NotTo(HaveOccurred(), "Create the runtime client")
 
+			By("creating test namespace")
 			testNamespace = corev1.Namespace{
 				ObjectMeta: metav1.ObjectMeta{
 					Name: uuid.NewString(),
 				},
 			}
-			err = c.Create(ctx, &testNamespace)
-			Expect(err).NotTo(HaveOccurred(), "Create the namespace")
+			cmd := exec.Command("kubectl", "create", "ns", testNamespace.Name)
+			_, err = utils.Run(cmd)
+			Expect(err).NotTo(HaveOccurred(), "Failed to create namespace")
 		})
 
 		AfterEach(func() {
-			err := c.Delete(ctx, &testNamespace)
-			Expect(err).NotTo(HaveOccurred(), "Cleanup the namespace")
+			By("deleting test namespace")
+			cmd := exec.Command("kubectl", "delete", "ns", testNamespace.Name)
+			_, err := utils.Run(cmd)
+			Expect(err).NotTo(HaveOccurred(), "Failed to delete namespace")
 		})
 
 		Context("ConfigMap Management", func() {
