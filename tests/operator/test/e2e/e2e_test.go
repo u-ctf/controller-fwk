@@ -526,11 +526,9 @@ var _ = Describe("Manager", Ordered, func() {
 					"key3": "new-value3",
 				}
 
-				err = c.Get(ctx, client.ObjectKeyFromObject(&testResource), &testResource)
-				Expect(err).NotTo(HaveOccurred(), "Get current Test resource")
-
+				originalResource := testResource.DeepCopy()
 				testResource.Spec.ConfigMap.Data = updatedData
-				err = c.Update(ctx, &testResource)
+				err = c.Patch(ctx, &testResource, client.MergeFrom(originalResource))
 				Expect(err).NotTo(HaveOccurred(), "Update Test resource")
 
 				By("verifying ConfigMap data is updated")
@@ -606,8 +604,9 @@ var _ = Describe("Manager", Ordered, func() {
 				err = c.Get(ctx, client.ObjectKeyFromObject(&testResource), &testResource)
 				Expect(err).NotTo(HaveOccurred(), "Get current Test resource")
 
+				originalResource := testResource.DeepCopy()
 				testResource.Spec.ConfigMap.Name = newConfigMapName
-				err = c.Update(ctx, &testResource)
+				err = c.Patch(ctx, &testResource, client.MergeFrom(originalResource))
 				Expect(err).NotTo(HaveOccurred(), "Update Test resource")
 
 				By("verifying new ConfigMap is created")
@@ -701,9 +700,10 @@ var _ = Describe("Manager", Ordered, func() {
 				err = c.Get(ctx, client.ObjectKeyFromObject(&testResource), &testResource)
 				Expect(err).NotTo(HaveOccurred(), "Get current Test resource")
 
+				originalResource := testResource.DeepCopy()
 				testResource.Spec.ConfigMap.Name = newConfigMapName
 				testResource.Spec.ConfigMap.Data = updatedData
-				err = c.Update(ctx, &testResource)
+				err = c.Patch(ctx, &testResource, client.MergeFrom(originalResource))
 				Expect(err).NotTo(HaveOccurred(), "Update Test resource")
 
 				By("verifying new ConfigMap is created with updated data")
@@ -791,8 +791,9 @@ var _ = Describe("Manager", Ordered, func() {
 				err = c.Get(ctx, client.ObjectKeyFromObject(&testResource), &testResource)
 				Expect(err).NotTo(HaveOccurred(), "Get current Test resource")
 
+				originalResource := testResource.DeepCopy()
 				testResource.Spec.ConfigMap.Enabled = false
-				err = c.Update(ctx, &testResource)
+				err = c.Patch(ctx, &testResource, client.MergeFrom(originalResource))
 				Expect(err).NotTo(HaveOccurred(), "Update Test resource")
 
 				By("verifying ConfigMap is deleted")
@@ -864,9 +865,10 @@ var _ = Describe("Manager", Ordered, func() {
 				err = c.Get(ctx, client.ObjectKeyFromObject(&testResource), &testResource)
 				Expect(err).NotTo(HaveOccurred(), "Get current Test resource")
 
+				originalResource := testResource.DeepCopy()
 				testResource.Spec.ConfigMap.Enabled = false
 				testResource.Spec.ConfigMap.Name = newConfigMapName
-				err = c.Update(ctx, &testResource)
+				err = c.Patch(ctx, &testResource, client.MergeFrom(originalResource))
 				Expect(err).NotTo(HaveOccurred(), "Update Test resource")
 
 				By("verifying original ConfigMap is deleted")
@@ -1231,8 +1233,9 @@ var _ = Describe("Manager", Ordered, func() {
 				err = c.Get(ctx, client.ObjectKeyFromObject(secret), secret)
 				Expect(err).NotTo(HaveOccurred(), "Get the secret for update")
 
+				originalResource := secret.DeepCopy()
 				secret.Data["ready"] = []byte("true")
-				err = c.Update(ctx, secret)
+				err = c.Patch(ctx, secret, client.MergeFrom(originalResource))
 				Expect(err).NotTo(HaveOccurred(), "Update the secret")
 
 				By("verifying SecretFound condition is removed when secret becomes ready")
@@ -1487,8 +1490,9 @@ var _ = Describe("Manager", Ordered, func() {
 				err = c.Get(ctx, client.ObjectKeyFromObject(sharedSecret), sharedSecret)
 				Expect(err).NotTo(HaveOccurred(), "Get shared secret for update")
 
+				originalResource := sharedSecret.DeepCopy()
 				delete(sharedSecret.Data, "ready")
-				err = c.Update(ctx, sharedSecret)
+				err = c.Patch(ctx, sharedSecret, client.MergeFrom(originalResource))
 				Expect(err).NotTo(HaveOccurred(), "Update shared secret to remove ready key")
 
 				By("verifying all Test resources get SecretFound condition set to False")
@@ -1513,8 +1517,9 @@ var _ = Describe("Manager", Ordered, func() {
 				err = c.Get(ctx, client.ObjectKeyFromObject(sharedSecret), sharedSecret)
 				Expect(err).NotTo(HaveOccurred(), "Get shared secret for final update")
 
+				originalResource = sharedSecret.DeepCopy()
 				sharedSecret.Data["ready"] = []byte("true")
-				err = c.Update(ctx, sharedSecret)
+				err = c.Patch(ctx, sharedSecret, client.MergeFrom(originalResource))
 				Expect(err).NotTo(HaveOccurred(), "Update shared secret to add ready key back")
 
 				By("verifying all Test resources have SecretFound condition removed")
@@ -1593,12 +1598,11 @@ var _ = Describe("Manager", Ordered, func() {
 					g.Expect(secretFoundCondition).To(BeNil(), "SecretFound condition should not exist when secret is ready")
 				}, 30*time.Second, time.Second).Should(Succeed())
 
-				By("updating secret to remove ready key (making it not ready)")
-				err = c.Get(ctx, client.ObjectKeyFromObject(secret), secret)
-				Expect(err).NotTo(HaveOccurred(), "Get secret for update")
+				secretBefore := secret.DeepCopy()
 
+				By("updating secret to remove ready key (making it not ready)")
 				delete(secret.Data, "ready")
-				err = c.Update(ctx, secret)
+				err = c.Patch(ctx, secret, client.MergeFrom(secretBefore))
 				Expect(err).NotTo(HaveOccurred(), "Update secret to remove ready key")
 
 				By("verifying SecretFound condition appears and is set to False")
@@ -1622,8 +1626,9 @@ var _ = Describe("Manager", Ordered, func() {
 				err = c.Get(ctx, client.ObjectKeyFromObject(secret), secret)
 				Expect(err).NotTo(HaveOccurred(), "Get secret for restore")
 
+				originalResource := secret.DeepCopy()
 				secret.Data["ready"] = []byte("true")
-				err = c.Update(ctx, secret)
+				err = c.Patch(ctx, secret, client.MergeFrom(originalResource))
 				Expect(err).NotTo(HaveOccurred(), "Update secret back to ready=true")
 
 				By("verifying SecretFound condition is removed when secret becomes ready again")
