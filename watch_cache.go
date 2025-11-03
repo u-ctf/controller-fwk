@@ -1,6 +1,7 @@
 package ctrlfwk
 
 import (
+	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
@@ -14,6 +15,8 @@ const (
 )
 
 type Watcher interface {
+	ctrl.Manager
+
 	// AddWatchSource adds a watch source to the cache
 	AddWatchSource(key WatchCacheKey)
 	// IsWatchSource checks if the key is a watch source

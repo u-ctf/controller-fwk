@@ -50,7 +50,7 @@ func NewResolveDependencyStep[
 				dependency.Set(dep)
 
 				if isFinalizing(reconciler) {
-					changed, err := RemoveManagedBy(dep, controller, reconciler.GetScheme())
+					changed, err := RemoveManagedBy(dep, controller, reconciler.Scheme())
 					if err != nil {
 						return ResultInError(err)
 					}
@@ -72,7 +72,7 @@ func NewResolveDependencyStep[
 					}
 				}
 
-				changed, err := AddManagedBy(dep, controller, reconciler.GetScheme())
+				changed, err := AddManagedBy(dep, controller, reconciler.Scheme())
 				if err != nil {
 					return ResultInError(err)
 				}
