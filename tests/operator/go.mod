@@ -3,10 +3,14 @@ module operator
 go 1.25
 
 require (
+	github.com/getsentry/sentry-go v0.36.2
+	github.com/getsentry/sentry-go/otel v0.36.2
 	github.com/google/uuid v1.6.0
 	github.com/onsi/ginkgo/v2 v2.25.3
 	github.com/onsi/gomega v1.38.2
 	github.com/u-ctf/controller-fwk v0.0.0-20251012143123-6d3531890bba
+	go.opentelemetry.io/otel v1.38.0
+	go.opentelemetry.io/otel/sdk v1.34.0
 	k8s.io/api v0.34.0
 	k8s.io/apimachinery v0.34.0
 	k8s.io/client-go v0.34.0
@@ -60,15 +64,18 @@ require (
 	github.com/spf13/cobra v1.10.1 // indirect
 	github.com/spf13/pflag v1.0.10 // indirect
 	github.com/stoewer/go-strcase v1.3.0 // indirect
+	github.com/tidwall/gjson v1.18.0 // indirect
+	github.com/tidwall/match v1.1.1 // indirect
+	github.com/tidwall/pretty v1.2.1 // indirect
+	github.com/tidwall/sjson v1.2.5 // indirect
+	github.com/wI2L/jsondiff v0.7.0 // indirect
 	github.com/x448/float16 v0.8.4 // indirect
 	go.opentelemetry.io/auto/sdk v1.1.0 // indirect
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.58.0 // indirect
-	go.opentelemetry.io/otel v1.35.0 // indirect
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace v1.34.0 // indirect
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc v1.34.0 // indirect
-	go.opentelemetry.io/otel/metric v1.35.0 // indirect
-	go.opentelemetry.io/otel/sdk v1.34.0 // indirect
-	go.opentelemetry.io/otel/trace v1.35.0 // indirect
+	go.opentelemetry.io/otel/metric v1.38.0 // indirect
+	go.opentelemetry.io/otel/trace v1.38.0 // indirect
 	go.opentelemetry.io/proto/otlp v1.5.0 // indirect
 	go.uber.org/automaxprocs v1.6.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect

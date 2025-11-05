@@ -7,7 +7,7 @@ domain: example.com
 layout:
 - go.kubebuilder.io/v4
 projectName: operator
-repo: github.com/yyewolf/controller-fwk
+repo: github.com/u-ctf/controller-fwk
 resources:
 - api:
     crdVersion: v1
@@ -16,6 +16,6 @@ resources:
   domain: example.com
   group: test
   kind: Test
-  path: github.com/yyewolf/controller-fwk/api/v1
+  path: github.com/u-ctf/controller-fwk/api/v1
   version: v1
 version: "3"

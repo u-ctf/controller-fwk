@@ -26,7 +26,6 @@ func NewResolveDynamicDependenciesStep[
 			for _, dependency := range dependencies {
 				subStepLogger := logger.WithValues("dependency", dependency.ID())
 
-				subStepLogger.Info("Resolving dependency")
 				subStep := NewResolveDependencyStep(reconciler, dependency)
 				result := subStep.Step(ctx, subStepLogger, req)
 				if result.ShouldReturn() {

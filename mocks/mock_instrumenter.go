@@ -10,15 +10,16 @@
 package mocks
 
 import (
+	context "context"
 	reflect "reflect"
 
-	sentry "github.com/getsentry/sentry-go"
+	logr "github.com/go-logr/logr"
+	trace "go.opentelemetry.io/otel/trace"
 	gomock "go.uber.org/mock/gomock"
 	workqueue "k8s.io/client-go/util/workqueue"
 	controllerruntime "sigs.k8s.io/controller-runtime"
 	client "sigs.k8s.io/controller-runtime/pkg/client"
 	handler "sigs.k8s.io/controller-runtime/pkg/handler"
-	predicate "sigs.k8s.io/controller-runtime/pkg/predicate"
 	reconcile "sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
@@ -47,58 +48,44 @@ func (m *MockInstrumenter) EXPECT() *MockInstrumenterMockRecorder {
 }
 
 // Cleanup mocks base method.
-func (m *MockInstrumenter) Cleanup(req reconcile.Request) {
+func (m *MockInstrumenter) Cleanup(ctx *context.Context, req reconcile.Request) {
 	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "Cleanup", req)
+	m.ctrl.Call(m, "Cleanup", ctx, req)
 }
 
 // Cleanup indicates an expected call of Cleanup.
-func (mr *MockInstrumenterMockRecorder) Cleanup(req any) *gomock.Call {
+func (mr *MockInstrumenterMockRecorder) Cleanup(ctx, req any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Cleanup", reflect.TypeOf((*MockInstrumenter)(nil).Cleanup), req)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Cleanup", reflect.TypeOf((*MockInstrumenter)(nil).Cleanup), ctx, req)
 }
 
-// GetOrCreateSentryHubForEvent mocks base method.
-func (m *MockInstrumenter) GetOrCreateSentryHubForEvent(event any) *sentry.Hub {
+// GetContextForEvent mocks base method.
+func (m *MockInstrumenter) GetContextForEvent(event any) *context.Context {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetOrCreateSentryHubForEvent", event)
-	ret0, _ := ret[0].(*sentry.Hub)
+	ret := m.ctrl.Call(m, "GetContextForEvent", event)
+	ret0, _ := ret[0].(*context.Context)
 	return ret0
 }
 
-// GetOrCreateSentryHubForEvent indicates an expected call of GetOrCreateSentryHubForEvent.
-func (mr *MockInstrumenterMockRecorder) GetOrCreateSentryHubForEvent(event any) *gomock.Call {
+// GetContextForEvent indicates an expected call of GetContextForEvent.
+func (mr *MockInstrumenterMockRecorder) GetContextForEvent(event any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetOrCreateSentryHubForEvent", reflect.TypeOf((*MockInstrumenter)(nil).GetOrCreateSentryHubForEvent), event)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetContextForEvent", reflect.TypeOf((*MockInstrumenter)(nil).GetContextForEvent), event)
 }
 
-// GetSentryHubForRequest mocks base method.
-func (m *MockInstrumenter) GetSentryHubForRequest(req reconcile.Request) (*sentry.Hub, bool) {
+// GetContextForRequest mocks base method.
+func (m *MockInstrumenter) GetContextForRequest(req reconcile.Request) (*context.Context, bool) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetSentryHubForRequest", req)
-	ret0, _ := ret[0].(*sentry.Hub)
+	ret := m.ctrl.Call(m, "GetContextForRequest", req)
+	ret0, _ := ret[0].(*context.Context)
 	ret1, _ := ret[1].(bool)
 	return ret0, ret1
 }
 
-// GetSentryHubForRequest indicates an expected call of GetSentryHubForRequest.
-func (mr *MockInstrumenterMockRecorder) GetSentryHubForRequest(req any) *gomock.Call {
+// GetContextForRequest indicates an expected call of GetContextForRequest.
+func (mr *MockInstrumenterMockRecorder) GetContextForRequest(req any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetSentryHubForRequest", reflect.TypeOf((*MockInstrumenter)(nil).GetSentryHubForRequest), req)
-}
-
-// InstrumentPredicate mocks base method.
-func (m *MockInstrumenter) InstrumentPredicate(arg0 predicate.Predicate) predicate.Predicate {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "InstrumentPredicate", arg0)
-	ret0, _ := ret[0].(predicate.Predicate)
-	return ret0
-}
-
-// InstrumentPredicate indicates an expected call of InstrumentPredicate.
-func (mr *MockInstrumenterMockRecorder) InstrumentPredicate(arg0 any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "InstrumentPredicate", reflect.TypeOf((*MockInstrumenter)(nil).InstrumentPredicate), arg0)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetContextForRequest", reflect.TypeOf((*MockInstrumenter)(nil).GetContextForRequest), req)
 }
 
 // InstrumentRequestHandler mocks base method.
@@ -115,6 +102,20 @@ func (mr *MockInstrumenterMockRecorder) InstrumentRequestHandler(arg0 any) *gomo
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "InstrumentRequestHandler", reflect.TypeOf((*MockInstrumenter)(nil).InstrumentRequestHandler), arg0)
 }
 
+// NewLogger mocks base method.
+func (m *MockInstrumenter) NewLogger(ctx context.Context) logr.Logger {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "NewLogger", ctx)
+	ret0, _ := ret[0].(logr.Logger)
+	return ret0
+}
+
+// NewLogger indicates an expected call of NewLogger.
+func (mr *MockInstrumenterMockRecorder) NewLogger(ctx any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "NewLogger", reflect.TypeOf((*MockInstrumenter)(nil).NewLogger), ctx)
+}
+
 // NewQueue mocks base method.
 func (m *MockInstrumenter) NewQueue(mgr controllerruntime.Manager) func(string, workqueue.TypedRateLimiter[reconcile.Request]) workqueue.TypedRateLimitingInterface[reconcile.Request] {
 	m.ctrl.T.Helper()
@@ -127,4 +128,24 @@ func (m *MockInstrumenter) NewQueue(mgr controllerruntime.Manager) func(string, 
 func (mr *MockInstrumenterMockRecorder) NewQueue(mgr any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "NewQueue", reflect.TypeOf((*MockInstrumenter)(nil).NewQueue), mgr)
+}
+
+// StartSpan mocks base method.
+func (m *MockInstrumenter) StartSpan(globalCtx *context.Context, localCtx context.Context, spanName string, opts ...trace.SpanStartOption) (context.Context, trace.Span) {
+	m.ctrl.T.Helper()
+	varargs := []any{globalCtx, localCtx, spanName}
+	for _, a := range opts {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "StartSpan", varargs...)
+	ret0, _ := ret[0].(context.Context)
+	ret1, _ := ret[1].(trace.Span)
+	return ret0, ret1
+}
+
+// StartSpan indicates an expected call of StartSpan.
+func (mr *MockInstrumenterMockRecorder) StartSpan(globalCtx, localCtx, spanName any, opts ...any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	varargs := append([]any{globalCtx, localCtx, spanName}, opts...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StartSpan", reflect.TypeOf((*MockInstrumenter)(nil).StartSpan), varargs...)
 }

@@ -1,6 +1,7 @@
 package instrument
 
 import (
+	"context"
 	"crypto/md5"
 	"encoding/json"
 	"fmt"
@@ -8,26 +9,33 @@ import (
 	"sync"
 	"weak"
 
-	"github.com/getsentry/sentry-go"
+	"github.com/go-logr/logr"
+	"go.opentelemetry.io/otel/trace"
 	"k8s.io/client-go/util/workqueue"
 	"k8s.io/utils/ptr"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/priorityqueue"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
-	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
 type Instrumenter interface {
 	InstrumentRequestHandler(handler handler.TypedEventHandler[client.Object, reconcile.Request]) handler.TypedEventHandler[client.Object, reconcile.Request]
-	InstrumentPredicate(predicate predicate.Predicate) predicate.Predicate
 
-	GetSentryHubForRequest(req reconcile.Request) (*sentry.Hub, bool)
-	GetOrCreateSentryHubForEvent(event any) *sentry.Hub
+	GetContextForRequest(req reconcile.Request) (*context.Context, bool)
+	GetContextForEvent(event any) *context.Context
 
 	NewQueue(mgr ctrl.Manager) func(controllerName string, rateLimiter workqueue.TypedRateLimiter[reconcile.Request]) workqueue.TypedRateLimitingInterface[reconcile.Request]
-	Cleanup(req reconcile.Request)
+	Cleanup(ctx *context.Context, req reconcile.Request)
+
+	NewLogger(ctx context.Context) logr.Logger
+
+	Tracer
+}
+
+type Tracer interface {
+	StartSpan(globalCtx *context.Context, localCtx context.Context, spanName string, opts ...trace.SpanStartOption) (context.Context, trace.Span)
 }
 
 type instrumenter struct {
@@ -35,15 +43,12 @@ type instrumenter struct {
 
 	queue *InstrumentedQueue[reconcile.Request]
 
-	lock     sync.Mutex
-	hubCache map[string]weak.Pointer[sentry.Hub]
-}
+	lock            sync.Mutex
+	ctxCache        map[string]weak.Pointer[context.Context]
+	ctxCacheReverse map[*context.Context]string
+	newLogger       func(ctx context.Context) logr.Logger
 
-func NewTracer(mgr ctrl.Manager) Instrumenter {
-	return &instrumenter{
-		mgr:      mgr,
-		hubCache: make(map[string]weak.Pointer[sentry.Hub]),
-	}
+	Tracer
 }
 
 func InstrumentRequestHandlerWithTracer[T client.Object](t Instrumenter, handler handler.TypedEventHandler[T, reconcile.Request]) handler.TypedEventHandler[T, reconcile.Request] {
@@ -52,10 +57,6 @@ func InstrumentRequestHandlerWithTracer[T client.Object](t Instrumenter, handler
 
 func (t *instrumenter) InstrumentRequestHandler(handler handler.TypedEventHandler[client.Object, reconcile.Request]) handler.TypedEventHandler[client.Object, reconcile.Request] {
 	return NewInstrumentedEventHandler(t, handler)
-}
-
-func (t *instrumenter) InstrumentPredicate(predicate predicate.Predicate) predicate.Predicate {
-	return NewInstrumentedPredicate(t, predicate)
 }
 
 func (t *instrumenter) NewQueue(mgr ctrl.Manager) func(controllerName string, rateLimiter workqueue.TypedRateLimiter[reconcile.Request]) workqueue.TypedRateLimitingInterface[reconcile.Request] {
@@ -78,63 +79,76 @@ func (t *instrumenter) NewQueue(mgr ctrl.Manager) func(controllerName string, ra
 	}
 }
 
-func (t *instrumenter) GetSentryHubForRequest(req reconcile.Request) (*sentry.Hub, bool) {
+func (t *instrumenter) GetContextForRequest(req reconcile.Request) (*context.Context, bool) {
+	var defaultContext = context.Background()
 	if t.queue.internalQueue == nil {
-		newHub := sentry.CurrentHub().Clone()
-		return newHub, false
+		return &defaultContext, false
 	}
 
 	meta, ok := t.queue.GetMetaOf(req)
 	if !ok {
-		newHub := sentry.CurrentHub().Clone()
-		return newHub, false
+		return &defaultContext, false
 	}
 
-	return meta.Hub, true
+	return meta.Context, true
 }
 
-func (t *instrumenter) GetOrCreateSentryHubForEvent(event any) *sentry.Hub {
+func (t *instrumenter) GetContextForEvent(event any) *context.Context {
+	var digest string
+
 	data, err := json.Marshal(event)
 	if err != nil {
-		ctrl.Log.Error(err, "failed to marshal event for tracing")
-		newHub := sentry.CurrentHub().Clone()
-		return newHub
+		hash := md5.Sum([]byte(fmt.Sprintf("%#+v\n", event)))
+		digest = fmt.Sprintf("%x", hash)
+	} else {
+		hash := md5.Sum(data)
+		digest = fmt.Sprintf("%x", hash)
 	}
-	hash := md5.Sum(data)
-	digest := fmt.Sprintf("%x", hash)
 
 	t.lock.Lock()
 	defer t.lock.Unlock()
 
-	val, ok := t.hubCache[digest]
+	val, ok := t.ctxCache[digest]
 	if ok && val.Value() != nil {
 		return val.Value()
 	}
 
-	hub := sentry.CurrentHub().Clone()
-	hub.ConfigureScope(func(scope *sentry.Scope) {
-		ctx := sentry.NewPropagationContext()
-		ctx.TraceID = hash
-		scope.SetPropagationContext(ctx)
-	})
+	ctx := context.Background()
+	ctxPtr := &ctx
 
-	runtime.AddCleanup(hub, t.cleanupKey, digest)
+	runtime.AddCleanup(ctxPtr, t.cleanupKey, digest)
 
-	t.hubCache[digest] = weak.Make(hub)
-	return hub
+	t.ctxCache[digest] = weak.Make(ctxPtr)
+	t.ctxCacheReverse[ctxPtr] = digest
+	return ctxPtr
 }
 
 func (t *instrumenter) cleanupKey(key string) {
 	t.lock.Lock()
 	defer t.lock.Unlock()
 
-	delete(t.hubCache, key)
+	delete(t.ctxCache, key)
 }
 
-func (t *instrumenter) Cleanup(req reconcile.Request) {
+func (t *instrumenter) Cleanup(ctx *context.Context, req reconcile.Request) {
 	if t.queue == nil {
 		return
 	}
 
 	t.queue.cleanupKey(req)
+
+	t.lock.Lock()
+	defer t.lock.Unlock()
+
+	digest, ok := t.ctxCacheReverse[ctx]
+	if !ok {
+		return
+	}
+
+	delete(t.ctxCache, digest)
+	delete(t.ctxCacheReverse, ctx)
+}
+
+func (t *instrumenter) NewLogger(ctx context.Context) logr.Logger {
+	return t.newLogger(ctx)
 }

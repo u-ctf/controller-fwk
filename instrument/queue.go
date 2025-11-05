@@ -1,28 +1,27 @@
 package instrument
 
 import (
+	"context"
 	"runtime"
 	"sync"
 	"time"
 	"weak"
 
-	"github.com/getsentry/sentry-go"
 	"k8s.io/client-go/util/workqueue"
 	"sigs.k8s.io/controller-runtime/pkg/controller/priorityqueue"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
 type encapsulatedItem[T comparable] struct {
-	Hub *sentry.Hub
-
-	Object weak.Pointer[T]
+	Context *context.Context
+	Object  weak.Pointer[T]
 }
 
 type InstrumentedQueue[T comparable] struct {
 	lock *sync.Mutex
 
-	currentHub    *sentry.Hub
-	internalQueue workqueue.TypedRateLimitingInterface[*T]
+	currentContext *context.Context
+	internalQueue  workqueue.TypedRateLimitingInterface[*T]
 
 	metamap map[T]*encapsulatedItem[T]
 }
@@ -41,24 +40,15 @@ func (q InstrumentedQueue[T]) cleanupKey(key T) {
 	q.lock.Lock()
 	defer q.lock.Unlock()
 
-	val, ok := q.metamap[key]
-	if !ok {
-		return
-	}
-
-	if val.Object.Value() != nil {
-		return
-	}
-
 	delete(q.metamap, key)
 }
 
-func (q InstrumentedQueue[T]) WithHub(hub *sentry.Hub) *InstrumentedQueue[T] {
+func (q InstrumentedQueue[T]) WithContext(ctx *context.Context) *InstrumentedQueue[T] {
 	return &InstrumentedQueue[T]{
-		lock:          q.lock,
-		currentHub:    hub,
-		internalQueue: q.internalQueue,
-		metamap:       q.metamap,
+		lock:           q.lock,
+		currentContext: ctx,
+		internalQueue:  q.internalQueue,
+		metamap:        q.metamap,
 	}
 }
 
@@ -96,8 +86,8 @@ func (q InstrumentedQueue[T]) Add(item T) {
 	if !q.isInQueue(item) {
 		q.internalQueue.Add(pointerToItem)
 		q.metamap[item] = &encapsulatedItem[T]{
-			Hub:    q.currentHub,
-			Object: weakPointerToItem,
+			Context: q.currentContext,
+			Object:  weakPointerToItem,
 		}
 	}
 }
@@ -113,8 +103,8 @@ func (q InstrumentedQueue[T]) AddAfter(item T, duration time.Duration) {
 	if !q.isInQueue(item) {
 		q.internalQueue.AddAfter(pointerToItem, duration)
 		q.metamap[item] = &encapsulatedItem[T]{
-			Hub:    q.currentHub,
-			Object: weakPointerToItem,
+			Context: q.currentContext,
+			Object:  weakPointerToItem,
 		}
 	}
 }
@@ -130,8 +120,8 @@ func (q InstrumentedQueue[T]) AddRateLimited(item T) {
 	if !q.isInQueue(item) {
 		q.internalQueue.AddRateLimited(pointerToItem)
 		q.metamap[item] = &encapsulatedItem[T]{
-			Hub:    q.currentHub,
-			Object: weakPointerToItem,
+			Context: q.currentContext,
+			Object:  weakPointerToItem,
 		}
 	}
 }
@@ -219,8 +209,8 @@ func (q InstrumentedQueue[T]) AddWithOpts(o priorityqueue.AddOpts, Items ...T) {
 				}
 
 				q.metamap[item] = &encapsulatedItem[T]{
-					Hub:    q.currentHub,
-					Object: weakPointerToItem,
+					Context: q.currentContext,
+					Object:  weakPointerToItem,
 				}
 			}
 		}

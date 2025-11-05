@@ -18,7 +18,7 @@ type CustomResource[K client.Object] struct {
 // It is especially useful to generate patches between the time it was first seen and the second time.
 func (cr *CustomResource[K]) GetCleanCustomResource() K {
 	if cr.cleanObjectInitialized {
-		return cr.cleanObject
+		return cr.cleanObject.DeepCopyObject().(K)
 	}
 
 	if reflect.ValueOf(cr.cleanObject).IsNil() {

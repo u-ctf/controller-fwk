@@ -13,7 +13,7 @@ import (
 )
 
 // NewSecretDependency creates a new Dependency representing a Secret
-func NewSecretDependency(reconciler ctrlfwk.Reconciler[*testv1.Test]) *ctrlfwk.Dependency[*corev1.Secret] {
+func NewSecretDependency(reconciler ctrlfwk.ReconcilerWithEventRecorder[*testv1.Test]) *ctrlfwk.Dependency[*corev1.Secret] {
 	cr := reconciler.GetCustomResource()
 
 	return ctrlfwk.NewDependencyBuilder(&corev1.Secret{}).
@@ -25,8 +25,14 @@ func NewSecretDependency(reconciler ctrlfwk.Reconciler[*testv1.Test]) *ctrlfwk.D
 		}).
 		WithWaitForReady(true).
 		WithAfterReconcile(func(ctx context.Context, resource *corev1.Secret) error {
+			if resource.Name == "" {
+				reconciler.Eventf(cr, "Warning", "SecretNotFound", "The required Secret was not found")
+				return SetConditionNotFound(ctx, reconciler)
+			}
+
 			if !isSecretReady(resource) {
-				return SetConditionNotFoundWhenNotFound(ctx, reconciler)
+				reconciler.Eventf(cr, "Warning", "SecretNotReady", "The required Secret is not ready")
+				return SetConditionNotReady(ctx, reconciler)
 			}
 
 			return CleanupStatusOnOK(ctx, reconciler)
@@ -38,7 +44,7 @@ func isSecretReady(secret *corev1.Secret) bool {
 	return secret.Data["ready"] != nil
 }
 
-func SetConditionNotFoundWhenNotFound(
+func SetConditionNotFound(
 	ctx context.Context,
 	reconciler ctrlfwk.Reconciler[*testv1.Test],
 ) error {
@@ -65,13 +71,35 @@ func SetConditionNotFoundWhenNotFound(
 	return nil
 }
 
-func CleanupStatusOnOK(
+func SetConditionNotReady(
 	ctx context.Context,
 	reconciler ctrlfwk.Reconciler[*testv1.Test],
 ) error {
 	cr := reconciler.GetCustomResource()
+
+	changed := meta.SetStatusCondition(&cr.Status.Conditions, metav1.Condition{
+		Type:               "SecretFound",
+		Status:             metav1.ConditionFalse,
+		Reason:             "NotReady",
+		Message:            "The required Secret is not ready",
+		ObservedGeneration: cr.Generation,
+	})
+	if changed {
+		// If the condition changed, we need to update the status
+		return ctrlfwk.PatchCustomResourceStatus(ctx, reconciler)
+	}
+
+	return nil
+}
+
+func CleanupStatusOnOK(
+	ctx context.Context,
+	reconciler ctrlfwk.ReconcilerWithEventRecorder[*testv1.Test],
+) error {
+	cr := reconciler.GetCustomResource()
 	changed := meta.RemoveStatusCondition(&cr.Status.Conditions, "SecretFound")
 	if changed {
+		reconciler.Eventf(cr, "Normal", "SecretFound", "The required Secret was found")
 		// If we removed the condition, we need to update the status
 		return ctrlfwk.PatchCustomResourceStatus(ctx, reconciler)
 	}

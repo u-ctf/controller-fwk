@@ -119,13 +119,16 @@ func getDesiredObject[
 	return func(ctx context.Context, req ctrl.Request) (client.Object, StepResult) {
 		desired, delete, err := resource.ObjectMetaGenerator()
 		if delete {
-			if desired != nil {
-				if err := reconciler.Delete(ctx, desired); client.IgnoreNotFound(err) != nil {
+			if desired != nil && desired.GetName() != "" {
+				err := reconciler.Delete(ctx, desired)
+				if client.IgnoreNotFound(err) != nil {
 					return nil, ResultInError(errors.Wrap(err, "failed to delete resource"))
 				}
 
-				if err := resource.OnDelete(ctx, desired); err != nil {
-					return nil, ResultInError(errors.Wrap(err, "failed to run OnDelete hook"))
+				if err == nil {
+					if err := resource.OnDelete(ctx, desired); err != nil {
+						return nil, ResultInError(errors.Wrap(err, "failed to run OnDelete hook"))
+					}
 				}
 			}
 			return nil, ResultEarlyReturn()

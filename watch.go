@@ -2,10 +2,12 @@ package ctrlfwk
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/pkg/errors"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/client/apiutil"
 	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
@@ -25,10 +27,16 @@ func SetupWatch[
 		// Setup watch if not already set
 		var partialObject metav1.PartialObjectMetadata
 		var partialObjectInterface client.Object = &partialObject
-		partialObject.SetGroupVersionKind(object.GetObjectKind().GroupVersionKind())
 
-		watchSource := NewWatchKey(partialObjectInterface, CacheTypeEnqueueForOwner)
+		gvk, err := apiutil.GVKForObject(object, reconciler.Scheme())
+		if err != nil {
+			return ResultInError(errors.Wrap(err, "failed to get GVK for object"))
+		}
+		partialObject.SetGroupVersionKind(gvk)
+
+		watchSource := NewWatchKey(gvk, CacheTypeEnqueueForOwner)
 		if !reconciler.IsWatchingSource(watchSource) {
+			fmt.Println("SETUP WATCH FOR", gvk)
 			requestHandler := handler.EnqueueRequestForOwner(reconciler.GetScheme(), reconciler.GetRESTMapper(), reconciler.GetCustomResource())
 			if isDependency {
 				managedByHandler, err := GetManagedByReconcileRequests(reconciler.GetCustomResource(), reconciler.GetScheme())
@@ -45,7 +53,7 @@ func SetupWatch[
 					reconciler.GetCache(),
 					partialObjectInterface,
 					requestHandler,
-					ResourceChangedPredicate{},
+					ResourceVersionChangedPredicate{},
 				),
 			)
 			if err != nil {
@@ -53,28 +61,30 @@ func SetupWatch[
 			}
 
 			reconciler.AddWatchSource(watchSource)
+		} else {
+			fmt.Println("WATCH ALREADY SET FOR", gvk)
 		}
 
 		return ResultSuccess()
 	}
 }
 
-type ResourceChangedPredicate struct {
+type ResourceVersionChangedPredicate struct {
 	predicate.Funcs
 }
 
-func (ResourceChangedPredicate) Update(e event.UpdateEvent) bool {
+func (ResourceVersionChangedPredicate) Update(e event.UpdateEvent) bool {
 	return e.ObjectOld.GetResourceVersion() != e.ObjectNew.GetResourceVersion()
 }
 
-func (ResourceChangedPredicate) Create(e event.CreateEvent) bool {
+func (ResourceVersionChangedPredicate) Create(e event.CreateEvent) bool {
 	return false
 }
 
-func (ResourceChangedPredicate) Delete(e event.DeleteEvent) bool {
+func (ResourceVersionChangedPredicate) Delete(e event.DeleteEvent) bool {
 	return true
 }
 
-func (ResourceChangedPredicate) Generic(e event.GenericEvent) bool {
+func (ResourceVersionChangedPredicate) Generic(e event.GenericEvent) bool {
 	return true
 }

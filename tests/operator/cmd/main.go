@@ -23,6 +23,7 @@ import (
 
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
 	// to ensure that exec-entrypoint and run can make use of them.
+	"go.opentelemetry.io/otel"
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 	"k8s.io/utils/ptr"
 
@@ -36,6 +37,12 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/metrics/filters"
 	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
+
+	"github.com/getsentry/sentry-go"
+	sentryotel "github.com/getsentry/sentry-go/otel"
+	ctrlfwk "github.com/u-ctf/controller-fwk"
+	"github.com/u-ctf/controller-fwk/instrument"
+	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 
 	testv1 "operator/api/v1"
 	"operator/internal/controller"
@@ -183,10 +190,28 @@ func main() {
 		os.Exit(1)
 	}
 
+	sentry.Init(sentry.ClientOptions{
+		Dsn:              "http://eba491d977b34a1c90adb4aa9bbfe87b@localhost:8000/1",
+		EnableTracing:    true,
+		TracesSampleRate: 1.0,
+	})
+	tp := sdktrace.NewTracerProvider(
+		sdktrace.WithSpanProcessor(sentryotel.NewSentrySpanProcessor()),
+	)
+	otel.SetTracerProvider(tp)
+	otel.SetTextMapPropagator(sentryotel.NewSentryPropagator())
+
+	instrumenter := instrument.NewInstrumenter(mgr).
+		WithLoggerFunc(instrument.NewSentryLoggerFunc(ctrl.Log.WithName("controller"))).
+		WithTracer(instrument.NewSentryTracer(tp.Tracer("controller"))).
+		Build()
+
 	if err := (&controller.TestReconciler{
-		Manager:       mgr,
 		Client:        mgr.GetClient(),
 		RuntimeScheme: mgr.GetScheme(),
+		EventRecorder: mgr.GetEventRecorderFor("test"),
+		Instrumenter:  instrumenter,
+		WatchCache:    ctrlfwk.NewWatchCache(mgr),
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "Test")
 		os.Exit(1)

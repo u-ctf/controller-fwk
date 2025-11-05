@@ -20,7 +20,9 @@ import (
 	"context"
 
 	ctrlfwk "github.com/u-ctf/controller-fwk"
+	"github.com/u-ctf/controller-fwk/instrument"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/client-go/tools/record"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -34,15 +36,17 @@ import (
 
 // TestReconciler reconciles a Test object
 type TestReconciler struct {
-	ctrl.Manager
 	client.Client
 	ctrlfwk.WatchCache
 	ctrlfwk.CustomResource[*testv1.Test]
+	instrument.Instrumenter
+	record.EventRecorder
 
 	RuntimeScheme *runtime.Scheme
 }
 
 var _ ctrlfwk.Reconciler[*testv1.Test] = &TestReconciler{}
+var _ ctrlfwk.ReconcilerWithWatcher[*testv1.Test] = &TestReconciler{}
 
 // +kubebuilder:rbac:groups=test.example.com,resources=tests,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=test.example.com,resources=tests/status,verbs=get;update;patch
@@ -62,6 +66,15 @@ func (reconciler *TestReconciler) GetResources(ctx context.Context, req ctrl.Req
 	}, nil
 }
 
+func (reconciler *TestReconciler) DeepCopy() *TestReconciler {
+	return &TestReconciler{
+		Client:        reconciler.Client,
+		WatchCache:    reconciler.WatchCache,
+		RuntimeScheme: reconciler.RuntimeScheme,
+		EventRecorder: reconciler.EventRecorder,
+	}
+}
+
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster closer to the desired state.
 // TODO(user): Modify the Reconcile function to compare the state specified by
@@ -74,18 +87,13 @@ func (reconciler *TestReconciler) GetResources(ctx context.Context, req ctrl.Req
 func (reconciler *TestReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	logger := logf.FromContext(ctx)
 
-	var newReconciler = &TestReconciler{
-		Manager:       reconciler.Manager,
-		Client:        reconciler.Client,
-		WatchCache:    reconciler.WatchCache,
-		RuntimeScheme: reconciler.RuntimeScheme,
-	}
+	reconciler = reconciler.DeepCopy()
 
 	stepper := ctrlfwk.NewStepper(logger,
-		ctrlfwk.WithStep(ctrlfwk.NewFindControllerCustomResourceStep(newReconciler)),
-		ctrlfwk.WithStep(ctrlfwk.NewResolveDynamicDependenciesStep(newReconciler)),
-		ctrlfwk.WithStep(ctrlfwk.NewReconcileResourcesStep(newReconciler)),
-		ctrlfwk.WithStep(ctrlfwk.NewEndStep(newReconciler, ctrlfwk.SetReadyCondition(newReconciler))),
+		ctrlfwk.WithStep(ctrlfwk.NewFindControllerCustomResourceStep(reconciler)),
+		ctrlfwk.WithStep(ctrlfwk.NewResolveDynamicDependenciesStep(reconciler)),
+		ctrlfwk.WithStep(ctrlfwk.NewReconcileResourcesStep(reconciler)),
+		ctrlfwk.WithStep(ctrlfwk.NewEndStep(reconciler, ctrlfwk.SetReadyCondition(reconciler))),
 	)
 
 	return stepper.Execute(ctx, req)
@@ -93,12 +101,11 @@ func (reconciler *TestReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 
 // SetupWithManager sets up the controller with the Manager.
 func (reconciler *TestReconciler) SetupWithManager(mgr ctrl.Manager) error {
-	ctrler, err := ctrl.NewControllerManagedBy(mgr).
+	ctrler, err := instrument.InstrumentedControllerManagedBy(reconciler, mgr).
 		For(&testv1.Test{}, builder.WithPredicates(predicate.GenerationChangedPredicate{})).
 		Named("test").
 		Build(reconciler)
 
 	reconciler.WatchCache.SetController(ctrler)
-
 	return err
 }

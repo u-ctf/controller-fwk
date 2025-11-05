@@ -3,6 +3,7 @@ package ctrlfwk
 import (
 	"context"
 
+	"k8s.io/client-go/tools/record"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -13,7 +14,6 @@ type ControllerCustomResource interface {
 
 type Reconciler[ControllerResourceType ControllerCustomResource] interface {
 	client.Client
-	ctrl.Manager
 
 	SetCustomResource(key ControllerResourceType)
 	GetCustomResource() ControllerResourceType
@@ -36,4 +36,10 @@ type ReconcilerWithResources[ControllerResourceType ControllerCustomResource] in
 	Reconciler[ControllerResourceType]
 
 	GetResources(ctx context.Context, req ctrl.Request) ([]GenericResource, error)
+}
+
+type ReconcilerWithEventRecorder[ControllerResourceType ControllerCustomResource] interface {
+	Reconciler[ControllerResourceType]
+
+	record.EventRecorder
 }

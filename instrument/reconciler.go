@@ -3,7 +3,7 @@ package instrument
 import (
 	"context"
 
-	"github.com/getsentry/sentry-go"
+	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
@@ -22,18 +22,20 @@ func NewInstrumentedReconciler(t Instrumenter, r reconcile.TypedReconciler[recon
 }
 
 func (t *InstrumentedReconciler) Reconcile(ctx context.Context, req reconcile.Request) (reconcile.Result, error) {
-	hub, _ := t.GetSentryHubForRequest(req)
-	ctx = sentry.SetHubOnContext(ctx, hub)
+	logger := t.NewLogger(ctx)
+	ctx = logf.IntoContext(ctx, logger)
 
-	tx := sentry.StartTransaction(ctx, "reconcile")
-	defer tx.Finish()
+	ctxPtr, _ := t.GetContextForRequest(req)
+
+	ctx, span := t.StartSpan(ctxPtr, ctx, "reconcile")
+	defer span.End()
 
 	result, err := t.internalReconciler.Reconcile(ctx, req)
 	if err != nil {
-		hub.CaptureException(err)
+		logger.Error(err, "failed to reconcile")
 	}
 
-	t.Cleanup(req)
+	t.Cleanup(ctxPtr, req)
 
 	return result, err
 }

@@ -108,12 +108,11 @@ func (stepper *Stepper) Execute(ctx context.Context, req ctrl.Request) (ctrl.Res
 
 	startedAt := time.Now()
 
-	logger.Info("\n\nStarting stepper execution")
+	logger.Info("Inserting line return for lisibility\n\n")
+	logger.Info("Starting stepper execution")
 
 	for _, step := range stepper.steps {
 		// time.Sleep(5 * time.Second)
-		logger.Info("Executing step", "step", step.Name)
-
 		stepStartedAt := time.Now()
 		result := step.Step(ctx, logger, req)
 		stepDuration := time.Since(stepStartedAt)

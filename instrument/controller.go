@@ -10,7 +10,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
-	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 )
@@ -51,19 +50,6 @@ func (t *InstrumentedController) Watch(src source.TypedSource[reconcile.Request]
 		originalHandler := realValue.Interface().(handler.TypedEventHandler[client.Object, reconcile.Request])
 		wrappedHandler := t.InstrumentRequestHandler(originalHandler)
 		realValue.Set(reflect.ValueOf(wrappedHandler))
-	}
-
-	predicatesField := v.FieldByName("Predicates")
-	if predicatesField.IsValid() && predicatesField.Type() == reflect.TypeOf([]predicate.Predicate{}) {
-		// Get the func to wrap it, it's exported since the name starts with a capital letter
-		ptr := unsafe.Pointer(predicatesField.UnsafeAddr())
-		realValue := reflect.NewAt(predicatesField.Type(), ptr).Elem()
-		originalPredicates := realValue.Interface().([]predicate.Predicate)
-		wrappedPredicates := make([]predicate.Predicate, len(originalPredicates))
-		for i, p := range originalPredicates {
-			wrappedPredicates[i] = t.InstrumentPredicate(p)
-		}
-		realValue.Set(reflect.ValueOf(wrappedPredicates))
 	}
 
 	return t.internalController.Watch(src)

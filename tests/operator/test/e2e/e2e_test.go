@@ -31,6 +31,7 @@ import (
 	"github.com/google/uuid"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -141,7 +142,7 @@ var _ = Describe("Manager", Ordered, func() {
 			cmd = exec.Command("kubectl", "describe", "pod", controllerPodName, "-n", namespace)
 			podDescription, err := utils.Run(cmd)
 			if err == nil {
-				fmt.Println("Pod description:\n", podDescription)
+				fmt.Println("Pod wdescription:\n", podDescription)
 			} else {
 				fmt.Println("Failed to describe controller pod")
 			}
@@ -1291,19 +1292,13 @@ var _ = Describe("Manager", Ordered, func() {
 				err = c.Create(ctx, &testResource)
 				Expect(err).NotTo(HaveOccurred(), "Create the Test resource")
 
-				By("verifying initial success state (no SecretFound condition)")
+				By("verifying initial success state (Ready condition)")
 				Eventually(func(g Gomega) {
 					err := c.Get(ctx, client.ObjectKeyFromObject(&testResource), &testResource)
 					g.Expect(err).NotTo(HaveOccurred(), "Get Test resource")
 
-					var secretFoundCondition *metav1.Condition
-					for _, cond := range testResource.Status.Conditions {
-						if cond.Type == "SecretFound" {
-							secretFoundCondition = &cond
-							break
-						}
-					}
-					g.Expect(secretFoundCondition).To(BeNil(), "SecretFound condition should not exist when secret is ready")
+					readyCondition := meta.FindStatusCondition(testResource.Status.Conditions, "Ready")
+					g.Expect(readyCondition).NotTo(BeNil(), "Ready condition should exist when secret is ready")
 				}, 30*time.Second, time.Second).Should(Succeed())
 
 				By("deleting the secret")
@@ -1315,13 +1310,7 @@ var _ = Describe("Manager", Ordered, func() {
 					err := c.Get(ctx, client.ObjectKeyFromObject(&testResource), &testResource)
 					g.Expect(err).NotTo(HaveOccurred(), "Get Test resource")
 
-					var secretFoundCondition *metav1.Condition
-					for _, cond := range testResource.Status.Conditions {
-						if cond.Type == "SecretFound" {
-							secretFoundCondition = &cond
-							break
-						}
-					}
+					secretFoundCondition := meta.FindStatusCondition(testResource.Status.Conditions, "SecretFound")
 					g.Expect(secretFoundCondition).NotTo(BeNil(), "SecretFound condition should exist after secret deletion")
 					g.Expect(secretFoundCondition.Status).To(Equal(metav1.ConditionFalse), "SecretFound condition should be False after secret deletion")
 				}, 30*time.Second, time.Second).Should(Succeed())
@@ -1345,13 +1334,7 @@ var _ = Describe("Manager", Ordered, func() {
 					err := c.Get(ctx, client.ObjectKeyFromObject(&testResource), &testResource)
 					g.Expect(err).NotTo(HaveOccurred(), "Get Test resource")
 
-					var secretFoundCondition *metav1.Condition
-					for _, cond := range testResource.Status.Conditions {
-						if cond.Type == "SecretFound" {
-							secretFoundCondition = &cond
-							break
-						}
-					}
+					secretFoundCondition := meta.FindStatusCondition(testResource.Status.Conditions, "SecretFound")
 					g.Expect(secretFoundCondition).To(BeNil(), "SecretFound condition should be removed when secret is recreated and ready")
 				}, 30*time.Second, time.Second).Should(Succeed())
 			})
@@ -1469,20 +1452,14 @@ var _ = Describe("Manager", Ordered, func() {
 					testResources = append(testResources, testRes)
 				}
 
-				By("verifying all Test resources have no SecretFound condition (indicating success)")
+				By("verifying all Test resources are initially ready")
 				for i, testRes := range testResources {
 					Eventually(func(g Gomega) {
 						err := c.Get(ctx, client.ObjectKeyFromObject(&testRes), &testRes)
 						g.Expect(err).NotTo(HaveOccurred(), fmt.Sprintf("Get Test resource %d", i))
 
-						var secretFoundCondition *metav1.Condition
-						for _, cond := range testRes.Status.Conditions {
-							if cond.Type == "SecretFound" {
-								secretFoundCondition = &cond
-								break
-							}
-						}
-						g.Expect(secretFoundCondition).To(BeNil(), fmt.Sprintf("Test resource %d should not have SecretFound condition when secret is ready", i))
+						readyCondition := meta.FindStatusCondition(testRes.Status.Conditions, "Ready")
+						g.Expect(readyCondition).NotTo(BeNil(), "Ready condition should exist when secret is ready")
 					}, 30*time.Second, time.Second).Should(Succeed())
 				}
 
@@ -1583,19 +1560,13 @@ var _ = Describe("Manager", Ordered, func() {
 				err = c.Create(ctx, &testResource)
 				Expect(err).NotTo(HaveOccurred(), "Create the Test resource")
 
-				By("verifying initial state with ready secret (no SecretFound condition)")
+				By("verifying initial state with ready secret (Ready condition)")
 				Eventually(func(g Gomega) {
 					err := c.Get(ctx, client.ObjectKeyFromObject(&testResource), &testResource)
 					g.Expect(err).NotTo(HaveOccurred(), "Get Test resource")
 
-					var secretFoundCondition *metav1.Condition
-					for _, cond := range testResource.Status.Conditions {
-						if cond.Type == "SecretFound" {
-							secretFoundCondition = &cond
-							break
-						}
-					}
-					g.Expect(secretFoundCondition).To(BeNil(), "SecretFound condition should not exist when secret is ready")
+					readyCondition := meta.FindStatusCondition(testResource.Status.Conditions, "Ready")
+					g.Expect(readyCondition).NotTo(BeNil(), "Ready condition should exist when secret is ready")
 				}, 30*time.Second, time.Second).Should(Succeed())
 
 				secretBefore := secret.DeepCopy()
@@ -1619,7 +1590,7 @@ var _ = Describe("Manager", Ordered, func() {
 					}
 					g.Expect(secretFoundCondition).NotTo(BeNil(), "SecretFound condition should exist when secret becomes not ready")
 					g.Expect(secretFoundCondition.Status).To(Equal(metav1.ConditionFalse), "SecretFound condition should be False when secret is not ready")
-					g.Expect(secretFoundCondition.Reason).To(Equal("NotFound"), "SecretFound condition reason should be NotFound")
+					g.Expect(secretFoundCondition.Reason).To(Equal("NotReady"), "SecretFound condition reason should be NotReady")
 				}, 30*time.Second, time.Second).Should(Succeed())
 
 				By("updating secret back to ready=true")

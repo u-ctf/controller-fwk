@@ -71,10 +71,9 @@ func TestBuilder_ShouldReplaceWatches(t *testing.T) {
 	}
 
 	mockedInstrumenter := mocks.NewMockInstrumenter(ctrlr)
-	mockedInstrumenter.EXPECT().GetOrCreateSentryHubForEvent(gomock.Any()).Return(nil).AnyTimes()
-	mockedInstrumenter.EXPECT().GetSentryHubForRequest(gomock.Any()).Return(nil, false).AnyTimes()
+	mockedInstrumenter.EXPECT().GetContextForEvent(gomock.Any()).Return(nil).AnyTimes()
+	mockedInstrumenter.EXPECT().GetContextForRequest(gomock.Any()).Return(nil, false).AnyTimes()
 	mockedInstrumenter.EXPECT().NewQueue(gomock.Any()).Return(nil).AnyTimes()
-	mockedInstrumenter.EXPECT().InstrumentPredicate(gomock.Any()).Return(nil).AnyTimes()
 
 	var hdler handler.TypedEventHandler[client.Object, reconcile.Request]
 	reflect.ValueOf(&hdler).Elem().Set(reflect.ValueOf(&handler.EnqueueRequestForObject{}))
@@ -121,16 +120,6 @@ func TestBuilder_ShouldReplaceWatches(t *testing.T) {
 			hdlrField := v.FieldByName("Handler")
 			if !hdlrField.IsValid() || hdlrField.Elem().Type() != reflect.TypeOf((*instrumentedEventHandler[client.Object])(nil)) {
 				t.Errorf("expected the Handler field to be of type *instrument.instrumentedEventHandler[sigs.k8s.io/controller-runtime/pkg/client.Object], got %v", hdlrField.Elem().Type())
-			}
-
-			predicatesField := v.FieldByName("Predicates")
-			if !predicatesField.IsValid() || predicatesField.Len() != 1 {
-				t.Errorf("expected the Predicates field to have length 1, got %v", predicatesField.Len())
-
-				pred, ok := predicatesField.Index(0).Interface().(predicate.Predicate)
-				if !ok || reflect.ValueOf(pred).Type() != reflect.TypeOf((*instrumentedPredicate)(nil)) {
-					t.Errorf("expected the first predicate to be of type *instrument.instrumentedPredicate, got %v", reflect.ValueOf(pred).Type())
-				}
 			}
 		}).Return(nil),
 	)

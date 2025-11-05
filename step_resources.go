@@ -26,7 +26,6 @@ func NewReconcileResourcesStep[
 			for _, resource := range resources {
 				subStepLogger := logger.WithValues("resource", resource.ID())
 
-				subStepLogger.Info("Reconciling resource")
 				subStep := NewReconcileResourceStep(reconciler, resource)
 				result := subStep.Step(ctx, subStepLogger, req)
 				if result.ShouldReturn() {

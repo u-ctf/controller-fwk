@@ -1,9 +1,9 @@
 package instrument
 
 import (
+	"context"
 	"testing"
 
-	"github.com/getsentry/sentry-go"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/util/workqueue"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
@@ -31,9 +31,10 @@ func TestInstrumentedQueue_AddAndGet(t *testing.T) {
 	internalQueue := workqueue.NewTypedRateLimitingQueue[*reconcile.Request](workqueue.DefaultTypedControllerRateLimiter[*reconcile.Request]())
 	instrumentedQueue := NewInstrumentedQueue(internalQueue)
 
-	// Create a hub and set it on the queue
-	hub := sentry.CurrentHub().Clone()
-	queueWithHub := instrumentedQueue.WithHub(hub)
+	// Create a context and set it on the queue
+	ctx := context.Background()
+	ctxPtr := &ctx
+	queueWithContext := instrumentedQueue.WithContext(ctxPtr)
 
 	testRequest := reconcile.Request{
 		NamespacedName: types.NamespacedName{
@@ -43,20 +44,20 @@ func TestInstrumentedQueue_AddAndGet(t *testing.T) {
 	}
 
 	// Test Add
-	queueWithHub.Add(testRequest)
+	queueWithContext.Add(testRequest)
 
 	// Verify metadata is stored
-	meta, exists := queueWithHub.GetMetaOf(testRequest)
+	meta, exists := queueWithContext.GetMetaOf(testRequest)
 	if !exists {
 		t.Errorf("expected metadata to exist for added item")
 	}
 
-	if meta.Hub != hub {
-		t.Errorf("expected hub to be stored in metadata")
+	if meta.Context != ctxPtr {
+		t.Errorf("expected context to be stored in metadata")
 	}
 
 	// Test Get
-	retrievedItem, shutdown := queueWithHub.Get()
+	retrievedItem, shutdown := queueWithContext.Get()
 	if shutdown {
 		t.Errorf("expected queue not to be shut down")
 	}
@@ -66,7 +67,7 @@ func TestInstrumentedQueue_AddAndGet(t *testing.T) {
 	}
 
 	// Test queue length
-	if queueWithHub.Len() != 0 {
-		t.Errorf("expected queue length to be 0, got %d", queueWithHub.Len())
+	if queueWithContext.Len() != 0 {
+		t.Errorf("expected queue length to be 0, got %d", queueWithContext.Len())
 	}
 }

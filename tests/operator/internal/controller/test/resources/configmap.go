@@ -16,7 +16,7 @@ import (
 )
 
 // NewConfigMapResource creates a new Resource representing a ConfigMap
-func NewConfigMapResource(reconciler ctrlfwk.Reconciler[*testv1.Test]) *ctrlfwk.Resource[*corev1.ConfigMap] {
+func NewConfigMapResource(reconciler ctrlfwk.ReconcilerWithEventRecorder[*testv1.Test]) *ctrlfwk.Resource[*corev1.ConfigMap] {
 	cr := reconciler.GetCustomResource()
 
 	return ctrlfwk.NewResourceBuilder(&corev1.ConfigMap{}).
@@ -69,6 +69,18 @@ func NewConfigMapResource(reconciler ctrlfwk.Reconciler[*testv1.Test]) *ctrlfwk.
 
 			// This is the following state: The ConfigMap is up to date
 			return SetStatusConfigMapIsUpToDate(ctx, reconciler)
+		}).
+		WithAfterCreate(func(ctx context.Context, resource *corev1.ConfigMap) error {
+			reconciler.Eventf(cr, "Normal", "ConfigMapCreated", "ConfigMap %s/%s created", resource.Namespace, resource.Name)
+			return nil
+		}).
+		WithAfterDelete(func(ctx context.Context, resource *corev1.ConfigMap) error {
+			reconciler.Eventf(cr, "Normal", "ConfigMapDeleted", "ConfigMap %s/%s deleted", resource.Namespace, resource.Name)
+			return nil
+		}).
+		WithAfterUpdate(func(ctx context.Context, resource *corev1.ConfigMap) error {
+			reconciler.Eventf(cr, "Normal", "ConfigMapUpdated", "ConfigMap %s/%s updated", resource.Namespace, resource.Name)
+			return nil
 		}).
 		Build()
 }

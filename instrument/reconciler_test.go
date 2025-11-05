@@ -5,8 +5,9 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/getsentry/sentry-go"
+	"github.com/go-logr/logr"
 	"github.com/u-ctf/controller-fwk/mocks"
+	"go.opentelemetry.io/otel/trace"
 	"go.uber.org/mock/gomock"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
@@ -48,12 +49,14 @@ func TestInstrumentedReconciler_Reconcile_Success(t *testing.T) {
 	}
 
 	expectedResult := reconcile.Result{Requeue: false}
-	hub := sentry.CurrentHub().Clone()
+	ctx = context.Background()
 
 	// Set up expectations
-	mockInstrumenter.EXPECT().GetSentryHubForRequest(req).Return(hub, true)
+	mockInstrumenter.EXPECT().GetContextForRequest(req).Return(&ctx, true)
+	mockInstrumenter.EXPECT().NewLogger(gomock.Any()).Return(logr.New(nil))
+	mockInstrumenter.EXPECT().StartSpan(gomock.Any(), gomock.Any(), gomock.Any()).Return(ctx, trace.SpanFromContext(ctx))
 	mockReconciler.EXPECT().Reconcile(gomock.Any(), req).Return(expectedResult, nil)
-	mockInstrumenter.EXPECT().Cleanup(req)
+	mockInstrumenter.EXPECT().Cleanup(&ctx, req)
 
 	// Test the Reconcile method
 	result, err := instrumentedReconciler.Reconcile(ctx, req)
@@ -86,12 +89,14 @@ func TestInstrumentedReconciler_Reconcile_WithError(t *testing.T) {
 
 	expectedResult := reconcile.Result{Requeue: true}
 	expectedError := errors.New("reconcile error")
-	hub := sentry.CurrentHub().Clone()
+	ctx = context.Background()
 
 	// Set up expectations
-	mockInstrumenter.EXPECT().GetSentryHubForRequest(req).Return(hub, true)
+	mockInstrumenter.EXPECT().GetContextForRequest(req).Return(&ctx, true)
+	mockInstrumenter.EXPECT().NewLogger(gomock.Any()).Return(logr.New(nil))
+	mockInstrumenter.EXPECT().StartSpan(gomock.Any(), gomock.Any(), gomock.Any()).Return(ctx, trace.SpanFromContext(ctx))
 	mockReconciler.EXPECT().Reconcile(gomock.Any(), req).Return(expectedResult, expectedError)
-	mockInstrumenter.EXPECT().Cleanup(req)
+	mockInstrumenter.EXPECT().Cleanup(&ctx, req)
 
 	// Test the Reconcile method with error
 	result, err := instrumentedReconciler.Reconcile(ctx, req)

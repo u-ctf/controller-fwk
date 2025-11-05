@@ -1,8 +1,8 @@
 package ctrlfwk
 
 import (
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	ctrl "sigs.k8s.io/controller-runtime"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
@@ -28,10 +28,19 @@ type Watcher interface {
 type WatchCache struct {
 	cache      map[WatchCacheKey]bool
 	controller controller.TypedController[reconcile.Request]
+
+	ctrl.Manager
 }
 
-func NewWatchKey(obj client.Object, watchType WatchCacheType) WatchCacheKey {
-	return WatchCacheKey(obj.GetName() + "/" + string(watchType))
+func NewWatchCache(mgr ctrl.Manager) WatchCache {
+	return WatchCache{
+		cache:   make(map[WatchCacheKey]bool),
+		Manager: mgr,
+	}
+}
+
+func NewWatchKey(gvk schema.GroupVersionKind, watchType WatchCacheType) WatchCacheKey {
+	return WatchCacheKey(gvk.String() + "/" + string(watchType))
 }
 
 func (w *WatchCache) AddWatchSource(key WatchCacheKey) {
