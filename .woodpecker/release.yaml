@@ -3,22 +3,11 @@ when:
   branch: ${CI_REPO_DEFAULT_BRANCH}
 
 steps:
-- name: get github token
-  image: ghcr.io/yyewolf/woodpecker-plugins/github-app-token
-  settings:
-    github_app_id:
-      from_secret: GH_APP_ID
-    github_installation_id:
-      from_secret: GH_INSTALL_ID
-    github_private_key_pem:
-      from_secret: GH_APP_PEM
-
 - name: release-helper
-  image: mirror.gcr.io/woodpeckerci/plugin-ready-release-go:3.4.0
-  environment:
-    PLUGIN_RELEASE_BRANCH: ${CI_REPO_DEFAULT_BRANCH}
-    PLUGIN_FORGE_TYPE: github
-    PLUGIN_GIT_EMAIL: robertowo@yewolf.fr
-  commands:
-  - export PLUGIN_GITHUB_TOKEN=$(cat .github_token)
-  - /app/node_modules/.bin/tsx /app/src/run.ts
+  image: docker.io/woodpeckerci/plugin-ready-release-go:3.4.0
+  settings:
+    release_branch: ${CI_REPO_DEFAULT_BRANCH}
+    forge_type: github
+    git_email: robertowo@yewolf.fr
+    github_token:
+      from_secret: GITHUB_TOKEN
