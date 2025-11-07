@@ -1,6 +1,6 @@
 # Changelog
 
-## [0.1.0](https://github.com/u-ctf/controller-fwk/releases/tag/0.1.0) - 2025-11-06
+## [0.1.0](https://github.com/u-ctf/controller-fwk/releases/tag/0.1.0) - 2025-11-07
 
 ### ❤️ Thanks to all contributors! ❤️
 
@@ -8,6 +8,7 @@
 
 ### Misc
 
+- ci: update to be safer ([2d1356f](https://github.com/u-ctf/controller-fwk/commit/2d1356fe231fd74752854fd132568aa4b5ca9d75))
 - ci: add ready-release-go ([b8f2390](https://github.com/u-ctf/controller-fwk/commit/b8f2390bb9048dd3bf39cd69b1992ab6cbaa11b5))
 - refactor(instrumentation): transform into a otel pluggable implementation ([1f80b37](https://github.com/u-ctf/controller-fwk/commit/1f80b377dfffb86d2e551ad3e5c0e018099c88eb))
 - fix(mgr): don't require mgr to be exposed by default, it's only needed when autowatch is set ([5787340](https://github.com/u-ctf/controller-fwk/commit/5787340bb4613efaecdf8f97b65a2c087e3c7638))
