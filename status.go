@@ -1,7 +1,6 @@
 package ctrlfwk
 
 import (
-	"context"
 	"reflect"
 
 	"k8s.io/apimachinery/pkg/api/meta"
@@ -62,16 +61,18 @@ func SetReadyCondition[ControllerResourceType client.Object](_ Reconciler[Contro
 // PatchCustomResourceStatus patches the status subresource of the custom resource stored in the context.
 // This function assumes that the context contains a ReconcilerContextData with the CustomResource field populated.
 // The step "FindControllerResource" does exactly that, populating the context.
-func PatchCustomResourceStatus[CustomResourceType client.Object](ctx context.Context, reconciler Reconciler[CustomResourceType]) error {
+func PatchCustomResourceStatus[CustomResourceType client.Object](ctx Context[CustomResourceType], reconciler Reconciler[CustomResourceType]) error {
 	// Get the custom resource from the context
-	cleanObject := reconciler.GetCleanCustomResource()
-	modifiableObject := reconciler.GetCustomResource()
+	cleanObject := ctx.GetCleanCustomResource()
+	modifiableObject := ctx.GetCustomResource()
 
 	// Patch the status subresource
 	err := reconciler.Status().Patch(ctx, modifiableObject, client.MergeFrom(cleanObject))
 	if err != nil {
 		return err
 	}
+
+	ctx.SetCustomResource(modifiableObject)
 
 	return nil
 }

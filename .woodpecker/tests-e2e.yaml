@@ -1,6 +1,7 @@
 when:
 - event: push
   branch: main
+- event: pull_request
 
 steps:
 - name: publish-e2e-image

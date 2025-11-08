@@ -1,7 +1,6 @@
 package ctrlfwk
 
 import (
-	"context"
 	"fmt"
 	"time"
 
@@ -16,11 +15,11 @@ func NewResolveDependencyStep[
 	ControllerResourceType ControllerCustomResource,
 ](
 	reconciler Reconciler[ControllerResourceType],
-	dependency GenericDependency,
-) Step {
-	return Step{
+	dependency GenericDependency[ControllerResourceType],
+) Step[ControllerResourceType] {
+	return Step[ControllerResourceType]{
 		Name: fmt.Sprintf(StepResolveDependency, dependency.Kind()),
-		Step: func(ctx context.Context, logger logr.Logger, req ctrl.Request) StepResult {
+		Step: func(ctx Context[ControllerResourceType], logger logr.Logger, req ctrl.Request) StepResult {
 			var dep client.Object
 
 			funcResult := func() StepResult {
@@ -28,7 +27,7 @@ func NewResolveDependencyStep[
 					return ResultInError(errors.Wrap(err, "failed to run BeforeReconcile hook"))
 				}
 
-				controller := reconciler.GetCustomResource()
+				cr := ctx.GetCustomResource()
 
 				depKey := dependency.Key()
 				dep = dependency.New()
@@ -39,7 +38,7 @@ func NewResolveDependencyStep[
 						return ResultInError(errors.Wrap(err, "failed to get dependency resource"))
 					}
 
-					if isFinalizing(reconciler) {
+					if IsFinalizing(cr) {
 						return ResultSuccess()
 					}
 
@@ -49,9 +48,9 @@ func NewResolveDependencyStep[
 
 				dependency.Set(dep)
 
-				if isFinalizing(reconciler) {
-					changed, err := RemoveManagedBy(dep, controller, reconciler.Scheme())
-					if err != nil {
+				if IsFinalizing(cr) {
+					changed, err := RemoveManagedBy(dep, cr, reconciler.Scheme())
+					if client.IgnoreNotFound(err) != nil {
 						return ResultInError(err)
 					}
 					if changed {
@@ -72,7 +71,7 @@ func NewResolveDependencyStep[
 					}
 				}
 
-				changed, err := AddManagedBy(dep, controller, reconciler.Scheme())
+				changed, err := AddManagedBy(dep, cr, reconciler.Scheme())
 				if err != nil {
 					return ResultInError(err)
 				}

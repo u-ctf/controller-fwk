@@ -110,6 +110,12 @@ func RemoveManagedBy(obj client.Object, controlledBy client.Object, scheme *runt
 		annotations = make(map[string]string)
 	}
 
+	if len(references) == 0 {
+		delete(annotations, AnnotationRef)
+		obj.SetAnnotations(annotations)
+		return true, nil
+	}
+
 	annotationValue, err := json.Marshal(references)
 	if err != nil {
 		return false, err
