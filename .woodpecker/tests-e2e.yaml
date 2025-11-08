@@ -28,28 +28,91 @@ steps:
     kubernetes:
       runtimeClassName: "sysbox-runc"
   commands:
-  # Start docker daemon
   - dockerd --ip6tables=false &
-  - sleep 5
-
-  # Verify installations
-  - kubectl version --client
-  - kind version
-
-  # Wait for Docker to be ready max 2 minutes
   - timeout 120s bash -c 'until docker info >/dev/null 2>&1; do sleep 1; done'
-  - docker --version
 
-  # Navigate to the operator test directory
+  - mkdir coverage
   - cd tests/operator
-
-  # Install Go dependencies
   - go mod tidy
+  - make test-e2e-coverage
 
-  # Run e2e tests
-  - make test-e2e-parallel
+  # Filter out coverage.out to contain the first line and lines with github.com/u-ctf/controller-fwk
+  - |
+    cat coverage.out | head -n 1 > library_coverage.out
+    grep "github.com/u-ctf/controller-fwk" coverage.out >> library_coverage.out
 
+    go tool cover -func=library_coverage.out -o ../../coverage/coverage.txt
+    go tool cover -html=library_coverage.out -o ../../coverage/coverage.html
+
+    PERCENTAGE=$(awk '/^total:/ {gsub(/%/, "", $3); printf $3}' ../../coverage/coverage.txt)
+    COLOR="red"
+    if [ "$(echo "$PERCENTAGE >= 90" | bc -l)" -eq 1 ]; then
+      COLOR="green"
+    elif [ "$(echo "$PERCENTAGE >= 75" | bc -l)" -eq 1 ]; then
+      COLOR="yellow"
+    elif [ "$(echo "$PERCENTAGE >= 50" | bc -l)" -eq 1 ]; then
+      COLOR="orange"
+    fi
+    echo "{\"schemaVersion\": 1, \"label\": \"coverage\", \"message\": \"$${PERCENTAGE}%\", \"color\": \"$COLOR\"}" > ../../coverage/coverage_badge.json
   environment:
     CGO_ENABLED: 0
     GOOS: linux
     GOARCH: amd64
+
+- name: upload reports
+  image: woodpeckerci/plugin-s3
+  settings:
+    bucket:
+      from_secret: S3_BUCKET
+    source: coverage/**
+    access_key:
+      from_secret: S3_ACCESS_KEY
+    secret_key:
+      from_secret: S3_SECRET_KEY
+    target: /public/${CI_REPO_REMOTE_ID}/${CI_COMMIT_SOURCE_BRANCH=${CI_COMMIT_BRANCH}}
+    path_style: true
+    overwrite: true
+    endpoint:
+      from_secret: S3_ENDPOINT
+
+- name: post comment
+  image: ghcr.io/yyewolf/woodpecker-plugins/github-comment
+  settings:
+    update_in_place: true
+    message_id: 8c7653c3-9a5f-40e5-ba57-b15fbaaa13e0
+    comment: |
+      ## 📊 Test Coverage Report
+
+      Coverage: [![Coverage](https://img.shields.io/endpoint?url=https://artifacts.yewolf.fr/u-ctf/public/${CI_REPO_REMOTE_ID}/${CI_COMMIT_SOURCE_BRANCH}/coverage/coverage_badge.json)](https://artifacts.yewolf.fr/u-ctf/public/${CI_REPO_REMOTE_ID}/${CI_COMMIT_SOURCE_BRANCH}/coverage/coverage.html)  
+      Original Coverage: [![Target](https://img.shields.io/endpoint?url=https://artifacts.yewolf.fr/u-ctf/public/${CI_REPO_REMOTE_ID}/${CI_COMMIT_BRANCH}/coverage/coverage_target_badge.json)](https://artifacts.yewolf.fr/u-ctf/public/${CI_REPO_REMOTE_ID}/${CI_COMMIT_BRANCH}/coverage/coverage.html)  
+
+      🔍 **Detailed Coverage Report**: [View HTML Report](https://artifacts.yewolf.fr/u-ctf/public/${CI_REPO_REMOTE_ID}/${CI_COMMIT_SOURCE_BRANCH}/coverage/coverage.html)
+    service_url: https://github-token-svc:8443/token
+    mtls_ca_cert:
+      from_secret: GITHUB_MTLS_CA_CERT
+    mtls_client_cert:
+      from_secret: GITHUB_MTLS_CLIENT_CERT
+    mtls_client_key:
+      from_secret: GITHUB_MTLS_CLIENT_KEY
+  when:
+    event:
+    - pull_request
+
+services:
+- name: github-token-svc
+  image: ghcr.io/yyewolf/woodpecker-plugins/github-app-token-svc
+  ports:
+  - 8443
+  settings:
+    github_app_id:
+      from_secret: GH_APP_ID
+    github_installation_id:
+      from_secret: GH_INSTALL_ID
+    github_private_key_pem:
+      from_secret: GH_APP_PEM
+    mtls_ca_cert:
+      from_secret: GITHUB_MTLS_CA_CERT
+    mtls_server_cert:
+      from_secret: GITHUB_MTLS_SERVER_CERT
+    mtls_server_key:
+      from_secret: GITHUB_MTLS_SERVER_KEY

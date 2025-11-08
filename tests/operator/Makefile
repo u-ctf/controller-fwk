@@ -91,6 +91,12 @@ test-e2e-parallel: setup-test-e2e manifests generate fmt vet ## Run the e2e test
 	KIND=$(KIND) KIND_CLUSTER=$(KIND_CLUSTER) go tool ginkgo -p -nodes=8 -tags=e2e ./test/e2e
 	$(MAKE) cleanup-test-e2e
 
+.PHONY: test-e2e-coverage
+test-e2e-coverage: setup-test-e2e manifests generate fmt vet ## Run the e2e tests with coverage collection.
+	@echo "Running e2e tests with coverage collection for github.com/u-ctf/controller-fwk..."
+	COVERAGE_ENABLED=true KIND=$(KIND) KIND_CLUSTER=$(KIND_CLUSTER) go tool ginkgo -v -p -nodes=8 -tags=e2e ./test/e2e
+	$(MAKE) cleanup-test-e2e
+
 .PHONY: cleanup-test-e2e
 cleanup-test-e2e: ## Tear down the Kind cluster used for e2e tests
 	@$(KIND) delete cluster --name $(KIND_CLUSTER)
@@ -125,6 +131,12 @@ docker-build: ## Build docker image with the manager.
 	rm -rf library
 	rsync -av --exclude='tests' ../../ ./library
 	$(CONTAINER_TOOL) build -t ${IMG} .
+
+.PHONY: docker-build-coverage
+docker-build-coverage: ## Build docker image with the manager with coverage instrumentation.
+	rm -rf library
+	rsync -av --exclude='tests' ../../ ./library
+	$(CONTAINER_TOOL) build -t ${IMG} -f Dockerfile.coverage .
 
 .PHONY: docker-push
 docker-push: ## Push docker image with the manager.
