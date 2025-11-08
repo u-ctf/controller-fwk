@@ -25,6 +25,7 @@ import (
 	"os"
 	"os/exec"
 	"testing"
+	"time"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -33,11 +34,15 @@ import (
 var (
 	// Optional Environment Variables:
 	// - CERT_MANAGER_INSTALL_SKIP=true: Skips CertManager installation during test setup.
+	// - COVERAGE_ENABLED=true: Enables coverage collection for github.com/u-ctf/controller-fwk package.
 	// These variables are useful if CertManager is already installed, avoiding
 	// re-installation and conflicts.
 	skipCertManagerInstall = os.Getenv("CERT_MANAGER_INSTALL_SKIP") == "true"
 	// isCertManagerAlreadyInstalled will be set true when CertManager CRDs be found on the cluster
 	isCertManagerAlreadyInstalled = false
+
+	// coverageEnabled determines if coverage collection is enabled
+	coverageEnabled = os.Getenv("COVERAGE_ENABLED") == "true"
 
 	// projectImage is the name of the image which will be build and loaded
 	// with the code source changes to be tested.
@@ -45,6 +50,100 @@ var (
 
 	controllerPodName string
 )
+
+// collectCoverageData extracts coverage data from the controller pod and saves it locally
+func collectCoverageData() {
+	if controllerPodName == "" {
+		_, _ = fmt.Fprintf(GinkgoWriter, "WARNING: Controller pod name not available, skipping coverage collection\n")
+		return
+	}
+
+	// Kill pod
+	By("terminating the controller pod to flush coverage data")
+	cmd := exec.Command("kubectl", "delete", "pod", controllerPodName, "-n", namespace, "--grace-period=30")
+	_, err := utils.Run(cmd)
+	if err != nil {
+		_, _ = fmt.Fprintf(GinkgoWriter, "WARNING: Failed to delete controller pod: %v\n", err)
+		return
+	}
+
+	// Wait a bit for coverage data to be flushed
+	By("waiting for coverage data to be flushed")
+	time.Sleep(30 * time.Second)
+
+	// Check if coverage data is now available
+	cmd = exec.Command("kubectl", "exec", "deploy/operator-controller-manager", "-n", namespace, "--", "ls", "-la", "/tmp/coverage")
+	if output, err := utils.Run(cmd); err == nil {
+		_, _ = fmt.Fprintf(GinkgoWriter, "Coverage directory after flush:\n%s\n", output)
+	}
+
+	// Get new pod name (new pod should be starting)
+	By("getting new controller pod name")
+	cmd = exec.Command("kubectl", "get", "pods", "-l", "control-plane=controller-manager", "-o", "jsonpath={.items[0].metadata.name}", "-n", namespace)
+	newControllerPodName, err := utils.Run(cmd)
+	if err != nil {
+		_, _ = fmt.Fprintf(GinkgoWriter, "WARNING: Failed to get new controller pod name: %v\n", err)
+		return
+	}
+	if newControllerPodName == controllerPodName {
+		_, _ = fmt.Fprintf(GinkgoWriter, "WARNING: New controller pod name is the same as the old one, something went wrong\n")
+		return
+	}
+	controllerPodName = newControllerPodName
+
+	// Copy coverage data (the pod should still be running briefly after SIGTERM)
+	By("copying coverage data from controller pod")
+	cmd = exec.Command("kubectl", "cp", fmt.Sprintf("%s/%s:/tmp/coverage", namespace, controllerPodName), "./coverage-data")
+	_, err = utils.Run(cmd)
+	if err != nil {
+		_, _ = fmt.Fprintf(GinkgoWriter, "WARNING: Failed to copy coverage data: %v\n", err)
+		return
+	}
+
+	_, _ = fmt.Fprintf(GinkgoWriter, "Coverage data saved to ./coverage-data\n")
+
+	// List what we actually copied
+	cmd = exec.Command("ls", "-la", "./coverage-data")
+	if localOutput, err := utils.Run(cmd); err == nil {
+		_, _ = fmt.Fprintf(GinkgoWriter, "Local coverage data contents:\n%s\n", localOutput)
+	}
+
+	// Convert coverage data to standard format
+	cmd = exec.Command("go", "tool", "covdata", "textfmt", "-i=./coverage-data", "-o", "coverage.out")
+	_, err = utils.Run(cmd)
+	if err != nil {
+		_, _ = fmt.Fprintf(GinkgoWriter, "WARNING: Failed to convert coverage data: %v\n", err)
+		// Try to get more information about what's in the coverage directory
+		cmd = exec.Command("find", "./coverage-data", "-type", "f")
+		if findOutput, findErr := utils.Run(cmd); findErr == nil {
+			_, _ = fmt.Fprintf(GinkgoWriter, "Files in coverage-data:\n%s\n", findOutput)
+		}
+	} else {
+		_, _ = fmt.Fprintf(GinkgoWriter, "Coverage report saved to coverage.out\n")
+
+		// Rename /workspace/ to . in coverage.out to fix paths
+		cmd = exec.Command("sed", "-i", "s|/workspace/|./|g", "coverage.out")
+		_, err = utils.Run(cmd)
+		if err != nil {
+			_, _ = fmt.Fprintf(GinkgoWriter, "WARNING: Failed to fix paths in coverage.out: %v\n", err)
+		}
+
+		// Show coverage summary
+		cmd = exec.Command("go", "tool", "cover", "-func=coverage.out")
+		if summaryOutput, summaryErr := utils.Run(cmd); summaryErr == nil {
+			_, _ = fmt.Fprintf(GinkgoWriter, "Coverage summary:\n%s\n", summaryOutput)
+		}
+
+		// Generate HTML coverage report
+		cmd = exec.Command("go", "tool", "cover", "-html=coverage.out", "-o", "coverage.html")
+		_, err = utils.Run(cmd)
+		if err != nil {
+			_, _ = fmt.Fprintf(GinkgoWriter, "WARNING: Failed to generate HTML coverage report: %v\n", err)
+		} else {
+			_, _ = fmt.Fprintf(GinkgoWriter, "HTML coverage report saved to coverage.html\n")
+		}
+	}
+}
 
 // TestE2E runs the end-to-end (e2e) test suite for the project. These tests execute in an isolated,
 // temporary environment to validate project changes with the purpose of being used in CI jobs.
@@ -58,10 +157,20 @@ func TestE2E(t *testing.T) {
 
 var _ = SynchronizedBeforeSuite(
 	func() {
-		By("building the manager(Operator) image")
-		cmd := exec.Command("make", "docker-build", fmt.Sprintf("IMG=%s", projectImage))
-		_, err := utils.Run(cmd)
-		ExpectWithOffset(1, err).NotTo(HaveOccurred(), "Failed to build the manager(Operator) image")
+		var cmd *exec.Cmd
+		var err error
+
+		if coverageEnabled {
+			By("building the manager(Operator) image with coverage instrumentation")
+			cmd = exec.Command("make", "docker-build-coverage", fmt.Sprintf("IMG=%s", projectImage))
+			_, err = utils.Run(cmd)
+			ExpectWithOffset(1, err).NotTo(HaveOccurred(), "Failed to build the manager(Operator) image with coverage")
+		} else {
+			By("building the manager(Operator) image")
+			cmd = exec.Command("make", "docker-build", fmt.Sprintf("IMG=%s", projectImage))
+			_, err = utils.Run(cmd)
+			ExpectWithOffset(1, err).NotTo(HaveOccurred(), "Failed to build the manager(Operator) image")
+		}
 
 		// TODO(user): If you want to change the e2e test vendor from Kind, ensure the image is
 		// built and available before running the tests. Also, remove the following block.
@@ -125,6 +234,11 @@ var _ = SynchronizedBeforeSuite(
 )
 
 var _ = SynchronizedAfterSuite(func() {}, func() {
+	if coverageEnabled {
+		By("collecting coverage data from controller pod")
+		collectCoverageData()
+	}
+
 	By("cleaning up the curl pod for metrics")
 	cmd := exec.Command("kubectl", "delete", "pod", "curl-metrics", "-n", namespace)
 	_, _ = utils.Run(cmd)

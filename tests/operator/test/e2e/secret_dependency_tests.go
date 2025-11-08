@@ -386,7 +386,7 @@ func SecretDependencyManagementTests(getClient func() client.Client, ctx context
 				g.Expect(secretFoundCondition.Status).To(Equal(metav1.ConditionFalse), "SecretFound condition should be False")
 				g.Expect(secretFoundCondition.Reason).To(Equal("SecretNotFound"), "SecretFound condition reason should be SecretNotFound")
 				g.Expect(secretFoundCondition.ObservedGeneration).To(Equal(testResource.GetGeneration()), "SecretFound condition should have correct generation")
-			}, 10*time.Second, 500*time.Millisecond).Should(Succeed())
+			}, 30*time.Second, 500*time.Millisecond).Should(Succeed())
 
 			// Clear secret reference to prevent cleanup from trying to delete it again
 			secret = nil
