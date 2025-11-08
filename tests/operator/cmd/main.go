@@ -40,9 +40,10 @@ import (
 
 	"github.com/getsentry/sentry-go"
 	sentryotel "github.com/getsentry/sentry-go/otel"
+	sdktrace "go.opentelemetry.io/otel/sdk/trace"
+
 	ctrlfwk "github.com/u-ctf/controller-fwk"
 	"github.com/u-ctf/controller-fwk/instrument"
-	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 
 	testv1 "operator/api/v1"
 	"operator/internal/controller"
@@ -214,6 +215,16 @@ func main() {
 		WatchCache:    ctrlfwk.NewWatchCache(mgr),
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "Test")
+		os.Exit(1)
+	}
+	if err := (&controller.UntypedTestReconciler{
+		Client:        mgr.GetClient(),
+		RuntimeScheme: mgr.GetScheme(),
+		EventRecorder: mgr.GetEventRecorderFor("untypedtest"),
+		Instrumenter:  instrumenter,
+		WatchCache:    ctrlfwk.NewWatchCache(mgr),
+	}).SetupWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create controller", "controller", "UntypedTest")
 		os.Exit(1)
 	}
 	// +kubebuilder:scaffold:builder

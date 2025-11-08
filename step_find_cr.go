@@ -1,8 +1,6 @@
 package ctrlfwk
 
 import (
-	"context"
-
 	"github.com/go-logr/logr"
 	"github.com/pkg/errors"
 
@@ -14,15 +12,14 @@ func NewFindControllerCustomResourceStep[
 	ControllerResourceType ControllerCustomResource,
 ](
 	reconciler Reconciler[ControllerResourceType],
-) Step {
-	return Step{
+) Step[ControllerResourceType] {
+	return Step[ControllerResourceType]{
 		Name: StepFindControllerCustomResource,
-		Step: func(ctx context.Context, logger logr.Logger, req ctrl.Request) StepResult {
-			// Get the controller resource
-			controllerResource := reconciler.GetCustomResource()
+		Step: func(ctx Context[ControllerResourceType], logger logr.Logger, req ctrl.Request) StepResult {
+			cr := ctx.GetCustomResource()
 
 			// Get the controller resource from the client
-			err := reconciler.Get(ctx, req.NamespacedName, controllerResource)
+			err := reconciler.Get(ctx, req.NamespacedName, cr)
 			if err != nil {
 				if client.IgnoreNotFound(err) != nil {
 					// If the resource is not found, return early
@@ -33,7 +30,7 @@ func NewFindControllerCustomResourceStep[
 			}
 
 			// Set the controller resource in the reconciler
-			reconciler.SetCustomResource(controllerResource)
+			ctx.SetCustomResource(cr)
 
 			return ResultSuccess()
 		},

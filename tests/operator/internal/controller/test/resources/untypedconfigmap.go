@@ -2,22 +2,24 @@ package test_resources
 
 import (
 	ctrlfwk "github.com/u-ctf/controller-fwk"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
 	testv1 "operator/api/v1"
 
-	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 )
 
-// NewConfigMapResource creates a new Resource representing a ConfigMap
-func NewConfigMapResource(ctx ctrlfwk.Context[*testv1.Test], reconciler ctrlfwk.ReconcilerWithEventRecorder[*testv1.Test]) *ctrlfwk.Resource[*testv1.Test, *corev1.ConfigMap] {
+// NewUntypedConfigMapResource creates a new Resource representing a ConfigMap
+func NewUntypedConfigMapResource(ctx ctrlfwk.Context[*testv1.UntypedTest], reconciler ctrlfwk.ReconcilerWithEventRecorder[*testv1.UntypedTest]) *ctrlfwk.UntypedResource[*testv1.UntypedTest] {
 	cr := ctx.GetCustomResource()
 
-	return ctrlfwk.NewResourceBuilder(ctx, &corev1.ConfigMap{}).
+	return ctrlfwk.NewUntypedResourceBuilder(ctx, schema.GroupVersionKind{Group: "", Version: "v1", Kind: "ConfigMap"}).
 		WithSkipAndDeleteOnCondition(func() bool {
 			return !cr.Spec.ConfigMap.Enabled
 		}).
@@ -35,22 +37,24 @@ func NewConfigMapResource(ctx ctrlfwk.Context[*testv1.Test], reconciler ctrlfwk.
 				Namespace: cr.Namespace,
 			}
 		}).
-		WithMutator(func(resource *corev1.ConfigMap) (err error) {
-			resource.Data = make(map[string]string)
+		WithMutator(func(resource *unstructured.Unstructured) (err error) {
+			datas := make(map[string]any)
 			for k, v := range cr.Spec.ConfigMap.Data {
-				resource.Data[k] = v
+				datas[k] = v
 			}
+
+			unstructured.SetNestedMap(resource.Object, datas, "data")
 
 			return controllerutil.SetOwnerReference(cr, resource, reconciler.Scheme())
 		}).
-		WithReadinessCondition(func(_ *corev1.ConfigMap) bool { return true }).
-		WithBeforeReconcile(func(ctx ctrlfwk.Context[*testv1.Test]) error {
+		WithReadinessCondition(func(_ *unstructured.Unstructured) bool { return true }).
+		WithBeforeReconcile(func(ctx ctrlfwk.Context[*testv1.UntypedTest]) error {
 			// This is the following state: The ConfigMap has been disabled
 			if !cr.Spec.ConfigMap.Enabled {
-				if err := CleanupConfigMapOnDeletion(ctx, reconciler); err != nil {
+				if err := CleanupConfigMapOnDeletionOnUntypedTest(ctx, reconciler); err != nil {
 					return err
 				}
-				if err := CleanupStatusOnConfigMapDeletion(ctx, reconciler); err != nil {
+				if err := CleanupStatusOnConfigMapDeletionOnUntypedTest(ctx, reconciler); err != nil {
 					return err
 				}
 				return nil
@@ -63,39 +67,38 @@ func NewConfigMapResource(ctx ctrlfwk.Context[*testv1.Test], reconciler ctrlfwk.
 
 			// This is the following state: The ConfigMap has been renamed
 			if cr.Status.ConfigMapStatus.Name != "" && cr.Status.ConfigMapStatus.Name != cr.Spec.ConfigMap.Name {
-				if err := CleanupConfigMapOnDeletion(ctx, reconciler); err != nil {
+				if err := CleanupConfigMapOnDeletionOnUntypedTest(ctx, reconciler); err != nil {
 					return err
 				}
 			}
-
 			return nil
 		}).
-		WithAfterReconcile(func(ctx ctrlfwk.Context[*testv1.Test], resource *corev1.ConfigMap) error {
+		WithAfterReconcile(func(ctx ctrlfwk.Context[*testv1.UntypedTest], resource *unstructured.Unstructured) error {
 			if !cr.Spec.ConfigMap.Enabled {
 				return nil
 			}
 
 			// This is the following state: The ConfigMap is up to date
-			return SetStatusConfigMapIsUpToDate(ctx, reconciler)
+			return SetStatusConfigMapIsUpToDateOnUntypedTest(ctx, reconciler)
 		}).
-		WithAfterCreate(func(ctx ctrlfwk.Context[*testv1.Test], resource *corev1.ConfigMap) error {
-			reconciler.Eventf(cr, "Normal", "ConfigMapCreated", "ConfigMap %s/%s created", resource.Namespace, resource.Name)
+		WithAfterCreate(func(ctx ctrlfwk.Context[*testv1.UntypedTest], resource *unstructured.Unstructured) error {
+			reconciler.Eventf(cr, "Normal", "ConfigMapCreated", "ConfigMap %s/%s created", resource.GetNamespace(), resource.GetName())
 			return nil
 		}).
-		WithAfterDelete(func(ctx ctrlfwk.Context[*testv1.Test], resource *corev1.ConfigMap) error {
-			reconciler.Eventf(cr, "Normal", "ConfigMapDeleted", "ConfigMap %s/%s deleted", resource.Namespace, resource.Name)
+		WithAfterDelete(func(ctx ctrlfwk.Context[*testv1.UntypedTest], resource *unstructured.Unstructured) error {
+			reconciler.Eventf(cr, "Normal", "ConfigMapDeleted", "ConfigMap %s/%s deleted", resource.GetNamespace(), resource.GetName())
 			return nil
 		}).
-		WithAfterUpdate(func(ctx ctrlfwk.Context[*testv1.Test], resource *corev1.ConfigMap) error {
-			reconciler.Eventf(cr, "Normal", "ConfigMapUpdated", "ConfigMap %s/%s updated", resource.Namespace, resource.Name)
+		WithAfterUpdate(func(ctx ctrlfwk.Context[*testv1.UntypedTest], resource *unstructured.Unstructured) error {
+			reconciler.Eventf(cr, "Normal", "ConfigMapUpdated", "ConfigMap %s/%s updated", resource.GetNamespace(), resource.GetName())
 			return nil
 		}).
 		Build()
 }
 
-func CleanupStatusOnConfigMapDeletion(
-	ctx ctrlfwk.Context[*testv1.Test],
-	reconciler ctrlfwk.Reconciler[*testv1.Test],
+func CleanupStatusOnConfigMapDeletionOnUntypedTest(
+	ctx ctrlfwk.Context[*testv1.UntypedTest],
+	reconciler ctrlfwk.Reconciler[*testv1.UntypedTest],
 ) error {
 	cr := ctx.GetCustomResource()
 
@@ -107,9 +110,9 @@ func CleanupStatusOnConfigMapDeletion(
 	return nil
 }
 
-func CleanupConfigMapOnDeletion(
-	ctx ctrlfwk.Context[*testv1.Test],
-	reconciler ctrlfwk.Reconciler[*testv1.Test],
+func CleanupConfigMapOnDeletionOnUntypedTest(
+	ctx ctrlfwk.Context[*testv1.UntypedTest],
+	reconciler ctrlfwk.Reconciler[*testv1.UntypedTest],
 ) error {
 	cr := ctx.GetCustomResource()
 
@@ -124,9 +127,9 @@ func CleanupConfigMapOnDeletion(
 	return nil
 }
 
-func SetStatusConfigMapIsUpToDate(
-	ctx ctrlfwk.Context[*testv1.Test],
-	reconciler ctrlfwk.Reconciler[*testv1.Test],
+func SetStatusConfigMapIsUpToDateOnUntypedTest(
+	ctx ctrlfwk.Context[*testv1.UntypedTest],
+	reconciler ctrlfwk.Reconciler[*testv1.UntypedTest],
 ) error {
 	cr := ctx.GetCustomResource()
 

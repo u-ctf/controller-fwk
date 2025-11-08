@@ -29,6 +29,7 @@ rules:
   - test.example.com
   resources:
   - tests
+  - untypedtests
   verbs:
   - create
   - delete
@@ -41,12 +42,14 @@ rules:
   - test.example.com
   resources:
   - tests/finalizers
+  - untypedtests/finalizers
   verbs:
   - update
 - apiGroups:
   - test.example.com
   resources:
   - tests/status
+  - untypedtests/status
   verbs:
   - get
   - patch

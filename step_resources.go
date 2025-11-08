@@ -1,8 +1,6 @@
 package ctrlfwk
 
 import (
-	"context"
-
 	"github.com/go-logr/logr"
 	"github.com/pkg/errors"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -12,10 +10,10 @@ func NewReconcileResourcesStep[
 	ControllerResourceType ControllerCustomResource,
 ](
 	reconciler ReconcilerWithResources[ControllerResourceType],
-) Step {
-	return Step{
+) Step[ControllerResourceType] {
+	return Step[ControllerResourceType]{
 		Name: StepReconcileResources,
-		Step: func(ctx context.Context, logger logr.Logger, req ctrl.Request) StepResult {
+		Step: func(ctx Context[ControllerResourceType], logger logr.Logger, req ctrl.Request) StepResult {
 			resources, err := reconciler.GetResources(ctx, req)
 			if err != nil {
 				return ResultInError(errors.Wrap(err, "failed to get resources"))
