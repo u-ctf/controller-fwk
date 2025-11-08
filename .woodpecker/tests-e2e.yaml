@@ -47,7 +47,7 @@ steps:
   - go mod tidy
 
   # Run e2e tests
-  - make test-e2e
+  - make test-e2e-parallel
 
   environment:
     CGO_ENABLED: 0
