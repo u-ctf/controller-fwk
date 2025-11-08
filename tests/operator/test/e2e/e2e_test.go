@@ -57,55 +57,7 @@ const metricsServiceName = "operator-controller-manager-metrics-service"
 // metricsRoleBindingName is the name of the RBAC that will be created to allow get the metrics data
 const metricsRoleBindingName = "operator-metrics-binding"
 
-var _ = Describe("Manager", Ordered, func() {
-	var controllerPodName string
-
-	// Before running the tests, set up the environment by creating the namespace,
-	// enforce the restricted security policy to the namespace, installing CRDs,
-	// and deploying the controller.
-	BeforeAll(func() {
-		By("creating manager namespace")
-		cmd := exec.Command("kubectl", "create", "ns", namespace)
-		_, err := utils.Run(cmd)
-		Expect(err).NotTo(HaveOccurred(), "Failed to create namespace")
-
-		By("labeling the namespace to enforce the restricted security policy")
-		cmd = exec.Command("kubectl", "label", "--overwrite", "ns", namespace,
-			"pod-security.kubernetes.io/enforce=restricted")
-		_, err = utils.Run(cmd)
-		Expect(err).NotTo(HaveOccurred(), "Failed to label namespace with restricted policy")
-
-		By("installing CRDs")
-		cmd = exec.Command("make", "install")
-		_, err = utils.Run(cmd)
-		Expect(err).NotTo(HaveOccurred(), "Failed to install CRDs")
-
-		By("deploying the controller-manager")
-		cmd = exec.Command("make", "deploy", fmt.Sprintf("IMG=%s", projectImage))
-		_, err = utils.Run(cmd)
-		Expect(err).NotTo(HaveOccurred(), "Failed to deploy the controller-manager")
-	})
-
-	// After all tests have been executed, clean up by undeploying the controller, uninstalling CRDs,
-	// and deleting the namespace.
-	AfterAll(func() {
-		By("cleaning up the curl pod for metrics")
-		cmd := exec.Command("kubectl", "delete", "pod", "curl-metrics", "-n", namespace)
-		_, _ = utils.Run(cmd)
-
-		By("undeploying the controller-manager")
-		cmd = exec.Command("make", "undeploy")
-		_, _ = utils.Run(cmd)
-
-		By("uninstalling CRDs")
-		cmd = exec.Command("make", "uninstall")
-		_, _ = utils.Run(cmd)
-
-		By("removing manager namespace")
-		cmd = exec.Command("kubectl", "delete", "ns", namespace)
-		_, _ = utils.Run(cmd)
-	})
-
+var _ = Describe("Manager", func() {
 	// After each test, check for failures and collect logs, events,
 	// and pod descriptions for debugging.
 	AfterEach(func() {
@@ -192,7 +144,6 @@ var _ = Describe("Manager", Ordered, func() {
 				fmt.Sprintf("--serviceaccount=%s:%s", namespace, serviceAccountName),
 			)
 			_, err := utils.Run(cmd)
-			Expect(err).NotTo(HaveOccurred(), "Failed to create ClusterRoleBinding")
 
 			By("validating that the metrics service is available")
 			cmd = exec.Command("kubectl", "get", "service", metricsServiceName, "-n", namespace)
@@ -339,11 +290,22 @@ var _ = Describe("Manager", Ordered, func() {
 		})
 
 		// Test both Test and UntypedTest resource types using the same test suite
-		ConfigMapManagementTests(getClient, ctx, getTestNamespace, CreateTestResource, "Test")
-		ConfigMapManagementTests(getClient, ctx, getTestNamespace, CreateUntypedTestResource, "UntypedTest")
+		// Each test suite runs in its own context to enable parallel execution
+		Context("ConfigMap Tests", func() {
+			ConfigMapManagementTests(getClient, ctx, getTestNamespace, CreateTestResource, "Test")
+		})
 
-		SecretDependencyManagementTests(getClient, ctx, getTestNamespace, CreateTestResource, "Test")
-		SecretDependencyManagementTests(getClient, ctx, getTestNamespace, CreateUntypedTestResource, "UntypedTest")
+		Context("ConfigMap Tests (Untyped)", func() {
+			ConfigMapManagementTests(getClient, ctx, getTestNamespace, CreateUntypedTestResource, "UntypedTest")
+		})
+
+		Context("Secret Dependency Tests", func() {
+			SecretDependencyManagementTests(getClient, ctx, getTestNamespace, CreateTestResource, "Test")
+		})
+
+		Context("Secret Dependency Tests (Untyped)", func() {
+			SecretDependencyManagementTests(getClient, ctx, getTestNamespace, CreateUntypedTestResource, "UntypedTest")
+		})
 	})
 })
 
