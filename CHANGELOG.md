@@ -1,13 +1,21 @@
 # Changelog
 
-## [0.1.0](https://github.com/u-ctf/controller-fwk/releases/tag/0.1.0) - 2025-11-07
+## [0.1.0](https://github.com/u-ctf/controller-fwk/releases/tag/0.1.0) - 2025-11-09
 
 ### ❤️ Thanks to all contributors! ❤️
 
-@Tristan Smagghe, @Yewolf
+@Tristan Smagghe, @Yewolf, @yyewolf
+
+### 📈 Enhancement
+
+- feat(concurrency): add context, fix builders and add more tests [[#6](https://github.com/u-ctf/controller-fwk/pull/6)]
 
 ### Misc
 
+- ci: use wrapping technique for super secret auth ([0e7c84c](https://github.com/u-ctf/controller-fwk/commit/0e7c84cc926b4c0f05c4b75874c7339fd60f71da))
+- ci: add tests coverage ([55b8330](https://github.com/u-ctf/controller-fwk/commit/55b833020b4700d4dca4e7d6424ab627de883960))
+- ci: make tests faster via parallelization ([d5f9407](https://github.com/u-ctf/controller-fwk/commit/d5f9407632836ee36faa0ea9b018b981adfa3962))
+- feat(concurrency): add context, fix builders and add more tests ([d3310a7](https://github.com/u-ctf/controller-fwk/commit/d3310a7fdc319fb70c30c07757620be6d0d04960))
 - ci: update to be safer ([2d1356f](https://github.com/u-ctf/controller-fwk/commit/2d1356fe231fd74752854fd132568aa4b5ca9d75))
 - ci: add ready-release-go ([b8f2390](https://github.com/u-ctf/controller-fwk/commit/b8f2390bb9048dd3bf39cd69b1992ab6cbaa11b5))
 - refactor(instrumentation): transform into a otel pluggable implementation ([1f80b37](https://github.com/u-ctf/controller-fwk/commit/1f80b377dfffb86d2e551ad3e5c0e018099c88eb))
