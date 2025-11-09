@@ -84,7 +84,7 @@ steps:
       ## 📊 Test Coverage Report
 
       Coverage: [![Coverage](https://img.shields.io/endpoint?url=https://artifacts.yewolf.fr/u-ctf/public/${CI_REPO_REMOTE_ID}/${CI_COMMIT_SOURCE_BRANCH}/coverage/coverage_badge.json)](https://artifacts.yewolf.fr/u-ctf/public/${CI_REPO_REMOTE_ID}/${CI_COMMIT_SOURCE_BRANCH}/coverage/coverage.html)  
-      Original Coverage: [![Target](https://img.shields.io/endpoint?url=https://artifacts.yewolf.fr/u-ctf/public/${CI_REPO_REMOTE_ID}/${CI_COMMIT_BRANCH}/coverage/coverage_target_badge.json)](https://artifacts.yewolf.fr/u-ctf/public/${CI_REPO_REMOTE_ID}/${CI_COMMIT_BRANCH}/coverage/coverage.html)  
+      Original Coverage: [![Target](https://img.shields.io/endpoint?url=https://artifacts.yewolf.fr/u-ctf/public/${CI_REPO_REMOTE_ID}/${CI_COMMIT_BRANCH}/coverage/coverage_badge.json)](https://artifacts.yewolf.fr/u-ctf/public/${CI_REPO_REMOTE_ID}/${CI_COMMIT_BRANCH}/coverage/coverage.html)  
 
       🔍 **Detailed Coverage Report**: [View HTML Report](https://artifacts.yewolf.fr/u-ctf/public/${CI_REPO_REMOTE_ID}/${CI_COMMIT_SOURCE_BRANCH}/coverage/coverage.html)
     service_url: https://github-token-svc:8443/token
