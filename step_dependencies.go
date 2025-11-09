@@ -1,10 +1,9 @@
 package ctrlfwk
 
 import (
-	"context"
-
 	"github.com/go-logr/logr"
 	"github.com/pkg/errors"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	ctrl "sigs.k8s.io/controller-runtime"
 )
 
@@ -12,16 +11,24 @@ func NewResolveDynamicDependenciesStep[
 	ControllerResourceType ControllerCustomResource,
 ](
 	reconciler ReconcilerWithDependencies[ControllerResourceType],
-) Step {
-	return Step{
+) Step[ControllerResourceType] {
+	return Step[ControllerResourceType]{
 		Name: StepResolveDependencies,
-		Step: func(ctx context.Context, logger logr.Logger, req ctrl.Request) StepResult {
+		Step: func(ctx Context[ControllerResourceType], logger logr.Logger, req ctrl.Request) StepResult {
 			dependencies, err := reconciler.GetDependencies(ctx, req)
 			if err != nil {
 				return ResultInError(errors.Wrap(err, "failed to get dependencies"))
 			}
 
 			var returnResults []StepResult
+
+			// Add the finalizer to clean up "managed by" references
+			// in dependencies when the CR is deleted
+			subStep := NewAddFinalizerStep(reconciler, FinalizerDependenciesManagedBy)
+			result := subStep.Step(ctx, logger, req)
+			if result.ShouldReturn() {
+				return result.FromSubStep()
+			}
 
 			for _, dependency := range dependencies {
 				subStepLogger := logger.WithValues("dependency", dependency.ID())
@@ -39,8 +46,18 @@ func NewResolveDynamicDependenciesStep[
 			// Return result errors first
 			for _, result := range returnResults {
 				if result.err != nil {
+					if IsFinalizing(ctx.GetCustomResource()) && apierrors.IsNotFound(result.err) {
+						continue
+					}
 					return result
 				}
+			}
+
+			// Remove the finalizer, ExecuteFinalizerStep will handle actual removal when finalizing
+			subStep = NewExecuteFinalizerStep(reconciler, FinalizerDependenciesManagedBy, NilFinalizerFunc)
+			result = subStep.Step(ctx, logger, req)
+			if result.ShouldReturn() {
+				return result.FromSubStep()
 			}
 
 			for _, result := range returnResults {

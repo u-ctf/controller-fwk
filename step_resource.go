@@ -1,7 +1,6 @@
 package ctrlfwk
 
 import (
-	"context"
 	"fmt"
 
 	"github.com/go-logr/logr"
@@ -15,18 +14,24 @@ func NewReconcileResourceStep[
 	ControllerResourceType ControllerCustomResource,
 ](
 	reconciler Reconciler[ControllerResourceType],
-	resource GenericResource,
-) Step {
-	return Step{
+	resource GenericResource[ControllerResourceType],
+) Step[ControllerResourceType] {
+	return Step[ControllerResourceType]{
 		Name: fmt.Sprintf(StepReconcileResource, resource.Kind()),
-		Step: func(ctx context.Context, logger logr.Logger, req ctrl.Request) StepResult {
+		Step: func(ctx Context[ControllerResourceType], logger logr.Logger, req ctrl.Request) StepResult {
 			var desired client.Object
 			var result StepResult
 
 			funcResult := func() StepResult {
-				if isFinalizing(reconciler) {
+				cr := ctx.GetCustomResource()
+
+				if IsFinalizing(cr) {
 					// If the resource does not require deletion, we can just finish here, it's gonna get garbage collected
 					if !resource.RequiresManualDeletion(resource.Get()) {
+						if err := resource.OnFinalize(ctx, desired); err != nil {
+							return ResultInError(errors.Wrap(err, "failed to run OnFinalize hook"))
+						}
+
 						return ResultSuccess()
 					}
 				}
@@ -40,9 +45,16 @@ func NewReconcileResourceStep[
 					return result.FromSubStep()
 				}
 
-				result = handleFinalization(reconciler, resource, desired)(ctx, req)
-				if result.ShouldReturn() {
-					return result.FromSubStep()
+				if IsFinalizing(cr) {
+					if err := reconciler.Delete(ctx, desired); client.IgnoreNotFound(err) != nil {
+						return ResultInError(errors.Wrap(err, "failed to delete resource"))
+					}
+
+					if err := resource.OnFinalize(ctx, desired); err != nil {
+						return ResultInError(errors.Wrap(err, "failed to run OnFinalize hook"))
+					}
+
+					return ResultSuccess()
 				}
 
 				// Setup watch if we can
@@ -88,35 +100,13 @@ func NewReconcileResourceStep[
 	}
 }
 
-func handleFinalization[
-	ControllerResourceType ControllerCustomResource,
-](
-	reconciler Reconciler[ControllerResourceType],
-	resource GenericResource,
-	desired client.Object,
-) func(ctx context.Context, req ctrl.Request) StepResult {
-	return func(ctx context.Context, req ctrl.Request) StepResult {
-		if isFinalizing(reconciler) {
-			if err := reconciler.Delete(ctx, desired); client.IgnoreNotFound(err) != nil {
-				return ResultInError(errors.Wrap(err, "failed to delete resource"))
-			}
-
-			if err := resource.OnFinalize(ctx, desired); err != nil {
-				return ResultInError(errors.Wrap(err, "failed to run OnFinalize hook"))
-			}
-		}
-
-		return ResultSuccess()
-	}
-}
-
 func getDesiredObject[
 	ControllerResourceType ControllerCustomResource,
 ](
 	reconciler Reconciler[ControllerResourceType],
-	resource GenericResource,
-) func(ctx context.Context, req ctrl.Request) (client.Object, StepResult) {
-	return func(ctx context.Context, req ctrl.Request) (client.Object, StepResult) {
+	resource GenericResource[ControllerResourceType],
+) func(ctx Context[ControllerResourceType], req ctrl.Request) (client.Object, StepResult) {
+	return func(ctx Context[ControllerResourceType], req ctrl.Request) (client.Object, StepResult) {
 		desired, delete, err := resource.ObjectMetaGenerator()
 		if delete {
 			if desired != nil && desired.GetName() != "" {

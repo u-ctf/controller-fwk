@@ -22,14 +22,6 @@ func NewInstanceOf[T client.Object](object T) T {
 	return newObject
 }
 
-func isFinalizing[
-	ControllerResourceType ControllerCustomResource,
-](
-	reconciler Reconciler[ControllerResourceType],
-) bool {
-	return reconciler.GetCustomResource().GetDeletionTimestamp() != nil
-}
-
 func SetAnnotation(obj client.Object, key, value string) {
 	if obj.GetAnnotations() == nil {
 		obj.SetAnnotations(make(map[string]string))

@@ -1,8 +1,6 @@
 package ctrlfwk
 
 import (
-	"context"
-
 	"github.com/go-logr/logr"
 	"github.com/pkg/errors"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -13,16 +11,15 @@ func NewEndStep[
 ](
 	reconciler Reconciler[ControllerResourceType],
 	setReadyCondF func(ControllerResourceType) (bool, error),
-) Step {
-	return Step{
+) Step[ControllerResourceType] {
+	return Step[ControllerResourceType]{
 		Name: StepEndReconciliation,
-		Step: func(ctx context.Context, logger logr.Logger, req ctrl.Request) StepResult {
-			// Get the controller resource
-			controllerResource := reconciler.GetCustomResource()
+		Step: func(ctx Context[ControllerResourceType], logger logr.Logger, req ctrl.Request) StepResult {
+			cr := ctx.GetCustomResource()
 
 			// Set Ready condition
 			if setReadyCondF != nil {
-				changed, err := setReadyCondF(controllerResource)
+				changed, err := setReadyCondF(cr)
 				if err != nil {
 					return ResultInError(errors.Wrap(err, "failed to set ready condition"))
 				}

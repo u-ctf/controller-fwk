@@ -1,7 +1,6 @@
 package ctrlfwk
 
 import (
-	"context"
 	"fmt"
 
 	"github.com/go-logr/logr"
@@ -15,11 +14,11 @@ func NewAddFinalizerStep[
 ](
 	reconciler Reconciler[ControllerResourceType],
 	finalizerName string,
-) Step {
-	return Step{
+) Step[ControllerResourceType] {
+	return Step[ControllerResourceType]{
 		Name: fmt.Sprintf(StepAddFinalizer, finalizerName),
-		Step: func(ctx context.Context, logger logr.Logger, req ctrl.Request) StepResult {
-			cr := reconciler.GetCustomResource()
+		Step: func(ctx Context[ControllerResourceType], logger logr.Logger, req ctrl.Request) StepResult {
+			cr := ctx.GetCustomResource()
 
 			if IsFinalizing(cr) {
 				return ResultSuccess()
@@ -27,7 +26,7 @@ func NewAddFinalizerStep[
 
 			changed := controllerutil.AddFinalizer(cr, finalizerName)
 			if changed {
-				err := reconciler.Patch(context.TODO(), cr, client.MergeFrom(reconciler.GetCleanCustomResource()))
+				err := reconciler.Patch(ctx, cr, client.MergeFrom(ctx.GetCleanCustomResource()))
 				if err != nil {
 					return ResultInError(err)
 				}

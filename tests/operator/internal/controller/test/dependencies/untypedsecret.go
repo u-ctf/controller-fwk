@@ -3,48 +3,55 @@ package test_dependencies
 import (
 	ctrlfwk "github.com/u-ctf/controller-fwk"
 	"k8s.io/apimachinery/pkg/api/meta"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 
 	testv1 "operator/api/v1"
 
-	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 )
 
-// NewSecretDependency creates a new Dependency representing a Secret
-func NewSecretDependency(ctx ctrlfwk.Context[*testv1.Test], reconciler ctrlfwk.ReconcilerWithEventRecorder[*testv1.Test]) *ctrlfwk.Dependency[*testv1.Test, *corev1.Secret] {
+// NewUntypedSecretDependency creates a new Dependency representing a Secret
+func NewUntypedSecretDependency(ctx ctrlfwk.Context[*testv1.UntypedTest], reconciler ctrlfwk.ReconcilerWithEventRecorder[*testv1.UntypedTest]) ctrlfwk.GenericDependency[*testv1.UntypedTest] {
 	cr := ctx.GetCustomResource()
 
-	return ctrlfwk.NewDependencyBuilder(ctx, &corev1.Secret{}).
+	return ctrlfwk.NewUntypedDependencyBuilder(ctx, schema.GroupVersionKind{Group: "", Version: "v1", Kind: "Secret"}).
 		WithName(cr.Spec.Dependencies.Secret.Name).
 		WithNamespace(cr.Spec.Dependencies.Secret.Namespace).
 		WithOptional(false).
-		WithIsReadyFunc(func(secret *corev1.Secret) bool {
-			return isSecretReady(secret)
+		WithIsReadyFunc(func(secret *unstructured.Unstructured) bool {
+			return isUntypedSecretReady(secret)
 		}).
 		WithWaitForReady(true).
-		WithAfterReconcile(func(ctx ctrlfwk.Context[*testv1.Test], resource *corev1.Secret) error {
-			if resource.Name == "" {
+		WithAfterReconcile(func(ctx ctrlfwk.Context[*testv1.UntypedTest], resource *unstructured.Unstructured) error {
+			if resource.GetName() == "" {
 				reconciler.Eventf(cr, "Warning", "SecretNotFound", "The required Secret was not found")
-				return SetConditionNotFound(ctx, reconciler)
+				return SetConditionNotFoundOnUntypedTest(ctx, reconciler)
 			}
 
-			if !isSecretReady(resource) {
+			if !isUntypedSecretReady(resource) {
 				reconciler.Eventf(cr, "Warning", "SecretNotReady", "The required Secret is not ready")
-				return SetConditionNotReady(ctx, reconciler)
+				return SetConditionNotReadyOnUntypedTest(ctx, reconciler)
 			}
 
-			return CleanupStatusOnOK(ctx, reconciler)
+			return CleanupStatusOnOKOnUntypedTest(ctx, reconciler)
 		}).
 		Build()
 }
 
-func isSecretReady(secret *corev1.Secret) bool {
-	return secret.Data["ready"] != nil
+func isUntypedSecretReady(secret *unstructured.Unstructured) bool {
+	data, found, err := unstructured.NestedMap(secret.Object, "data")
+	if err != nil || !found {
+		return false
+	}
+
+	_, readyFound := data["ready"]
+	return readyFound
 }
 
-func SetConditionNotFound(
-	ctx ctrlfwk.Context[*testv1.Test],
-	reconciler ctrlfwk.Reconciler[*testv1.Test],
+func SetConditionNotFoundOnUntypedTest(
+	ctx ctrlfwk.Context[*testv1.UntypedTest],
+	reconciler ctrlfwk.Reconciler[*testv1.UntypedTest],
 ) error {
 	cr := ctx.GetCustomResource()
 
@@ -69,9 +76,9 @@ func SetConditionNotFound(
 	return nil
 }
 
-func SetConditionNotReady(
-	ctx ctrlfwk.Context[*testv1.Test],
-	reconciler ctrlfwk.Reconciler[*testv1.Test],
+func SetConditionNotReadyOnUntypedTest(
+	ctx ctrlfwk.Context[*testv1.UntypedTest],
+	reconciler ctrlfwk.Reconciler[*testv1.UntypedTest],
 ) error {
 	cr := ctx.GetCustomResource()
 
@@ -90,9 +97,9 @@ func SetConditionNotReady(
 	return nil
 }
 
-func CleanupStatusOnOK(
-	ctx ctrlfwk.Context[*testv1.Test],
-	reconciler ctrlfwk.ReconcilerWithEventRecorder[*testv1.Test],
+func CleanupStatusOnOKOnUntypedTest(
+	ctx ctrlfwk.Context[*testv1.UntypedTest],
+	reconciler ctrlfwk.ReconcilerWithEventRecorder[*testv1.UntypedTest],
 ) error {
 	cr := ctx.GetCustomResource()
 

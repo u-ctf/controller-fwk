@@ -6,7 +6,7 @@ require (
 	github.com/getsentry/sentry-go v0.36.2
 	github.com/getsentry/sentry-go/otel v0.36.2
 	github.com/google/uuid v1.6.0
-	github.com/onsi/ginkgo/v2 v2.25.3
+	github.com/onsi/ginkgo/v2 v2.27.2
 	github.com/onsi/gomega v1.38.2
 	github.com/u-ctf/controller-fwk v0.0.0-20251012143123-6d3531890bba
 	go.opentelemetry.io/otel v1.38.0
@@ -83,6 +83,7 @@ require (
 	go.yaml.in/yaml/v2 v2.4.2 // indirect
 	go.yaml.in/yaml/v3 v3.0.4 // indirect
 	golang.org/x/exp v0.0.0-20240719175910-8a7402abbf56 // indirect
+	golang.org/x/mod v0.28.0 // indirect
 	golang.org/x/net v0.44.0 // indirect
 	golang.org/x/oauth2 v0.27.0 // indirect
 	golang.org/x/sync v0.17.0 // indirect
@@ -112,3 +113,7 @@ require (
 )
 
 replace github.com/u-ctf/controller-fwk => ../../
+
+tool (
+	github.com/onsi/ginkgo/v2/ginkgo
+)

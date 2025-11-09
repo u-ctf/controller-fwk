@@ -1,0 +1,59 @@
+# Build the manager binary with coverage instrumentation
+FROM golang:1.25 AS builder
+ARG TARGETOS
+ARG TARGETARCH
+
+WORKDIR /workspace
+# Copy the Go Modules manifests
+COPY go.mod go.mod
+COPY go.sum go.sum
+# cache deps before building and copying source so that we don't need to re-download as much
+# and so that source changes don't invalidate our downloaded layer
+
+COPY library ./library
+RUN go mod edit -replace github.com/u-ctf/controller-fwk=./library
+RUN go mod download
+
+# Copy the Go source (relies on .dockerignore to filter)
+COPY . .
+
+RUN go mod edit -replace github.com/u-ctf/controller-fwk=./library
+
+# Install coverage tool
+RUN go install github.com/u-ctf/controller-fwk/cmd/coverage-merger@latest || true
+
+# Build with coverage instrumentation
+# We build with -cover flag and specify the packages to collect coverage for
+RUN CGO_ENABLED=0 GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH} go build \
+    -cover \
+    -coverpkg=./...,github.com/u-ctf/controller-fwk/... \
+    -a -o manager cmd/main.go
+
+RUN mkdir -p /tmp/coverage && chmod 777 /tmp/coverage
+
+# Use a base image with shell and basic tools for coverage collection
+# We need shell, tar, and basic utilities to extract coverage data
+FROM alpine:3.19 AS runtime
+
+# Install necessary tools for coverage extraction
+RUN apk add --no-cache \
+    ca-certificates \
+    tar \
+    gzip
+
+# Create non-root user matching distroless nonroot user
+RUN addgroup -g 65532 -S nonroot && \
+    adduser -u 65532 -S nonroot -G nonroot
+
+WORKDIR /
+
+# Copy the manager binary and wrapper script from builder
+COPY --from=builder /workspace/manager .
+
+# Switch to non-root user
+USER 65532:65532
+
+# Set environment variable for coverage output
+ENV GOCOVERDIR=/tmp/coverage
+
+ENTRYPOINT ["/manager"]

@@ -1,19 +1,16 @@
 package ctrlfwk
 
 import (
-	"context"
 	"fmt"
 	"reflect"
 
-	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
-	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 type Mutator[T client.Object] func(resource T) error
 
-type GenericResource interface {
+type GenericResource[K client.Object] interface {
 	ID() string
 	ObjectMetaGenerator() (obj client.Object, delete bool, err error)
 	ShouldDeleteNow() bool
@@ -25,17 +22,17 @@ type GenericResource interface {
 	RequiresManualDeletion(obj client.Object) bool
 
 	// Hooks
-	BeforeReconcile(ctx context.Context) error
-	AfterReconcile(ctx context.Context, resource client.Object) error
-	OnCreate(ctx context.Context, resource client.Object) error
-	OnUpdate(ctx context.Context, resource client.Object) error
-	OnDelete(ctx context.Context, resource client.Object) error
-	OnFinalize(ctx context.Context, resource client.Object) error
+	BeforeReconcile(ctx Context[K]) error
+	AfterReconcile(ctx Context[K], resource client.Object) error
+	OnCreate(ctx Context[K], resource client.Object) error
+	OnUpdate(ctx Context[K], resource client.Object) error
+	OnDelete(ctx Context[K], resource client.Object) error
+	OnFinalize(ctx Context[K], resource client.Object) error
 }
 
-var _ GenericResource = &Resource[client.Object]{}
+var _ GenericResource[client.Object] = &Resource[client.Object, client.Object]{}
 
-type Resource[T client.Object] struct {
+type Resource[K, T client.Object] struct {
 	userIdentifier string
 	keyF           func() types.NamespacedName
 	mutateF        Mutator[T]
@@ -46,111 +43,19 @@ type Resource[T client.Object] struct {
 	output            T
 
 	// Hooks
-	beforeReconcileF func(ctx context.Context) error
-	afterReconcileF  func(ctx context.Context, resource T) error
-	onCreateF        func(ctx context.Context, resource T) error
-	onUpdateF        func(ctx context.Context, resource T) error
-	onDeleteF        func(ctx context.Context, resource T) error
-	onFinalizeF      func(ctx context.Context, resource T) error
+	beforeReconcileF func(ctx Context[K]) error
+	afterReconcileF  func(ctx Context[K], resource T) error
+	onCreateF        func(ctx Context[K], resource T) error
+	onUpdateF        func(ctx Context[K], resource T) error
+	onDeleteF        func(ctx Context[K], resource T) error
+	onFinalizeF      func(ctx Context[K], resource T) error
 }
 
-type ResourceOption[T client.Object] func(*Resource[T])
-
-func ResourceWithKey[T client.Object](_ T, name types.NamespacedName) ResourceOption[T] {
-	return func(c *Resource[T]) {
-		c.keyF = func() types.NamespacedName {
-			return name
-		}
-	}
-}
-
-func ResourceWithKeyFunc[T client.Object](_ T, f func() types.NamespacedName) ResourceOption[T] {
-	return func(c *Resource[T]) {
-		c.keyF = f
-	}
-}
-
-func ResourceWithMutator[T client.Object](f Mutator[T]) ResourceOption[T] {
-	return func(c *Resource[T]) {
-		c.mutateF = f
-	}
-}
-
-func ResourceWithOutput[T client.Object](obj T) ResourceOption[T] {
-	return func(c *Resource[T]) {
-		c.output = obj
-	}
-}
-
-func ResourceWithReadinessCondition[T client.Object](f func(obj T) bool) ResourceOption[T] {
-	return func(c *Resource[T]) {
-		c.isReadyF = f
-	}
-}
-
-func ResourceSkipAndDeleteOnCondition[T client.Object](_ T, f func() bool) ResourceOption[T] {
-	return func(c *Resource[T]) {
-		c.shouldDeleteF = f
-	}
-}
-
-func ResourceRequireManualDeletionForFinalize[T client.Object](f func(obj T) bool) ResourceOption[T] {
-	return func(c *Resource[T]) {
-		c.requiresDeletionF = f
-	}
-}
-
-func ResourceBeforeReconcile[T client.Object](_ T, f func(ctx context.Context) error) ResourceOption[T] {
-	return func(c *Resource[T]) {
-		c.beforeReconcileF = f
-	}
-}
-
-func ResourceAfterReconcile[T client.Object](_ T, f func(ctx context.Context, resource T) error) ResourceOption[T] {
-	return func(c *Resource[T]) {
-		c.afterReconcileF = f
-	}
-}
-
-func ResourceAfterCreate[T client.Object](f func(ctx context.Context, resource T) error) ResourceOption[T] {
-	return func(c *Resource[T]) {
-		c.onCreateF = f
-	}
-}
-
-func ResourceAfterUpdate[T client.Object](f func(ctx context.Context, resource T) error) ResourceOption[T] {
-	return func(c *Resource[T]) {
-		c.onUpdateF = f
-	}
-}
-
-func ResourceAfterDelete[T client.Object](f func(ctx context.Context, resource T) error) ResourceOption[T] {
-	return func(c *Resource[T]) {
-		c.onDeleteF = f
-	}
-}
-
-func ResourceAfterFinalize[T client.Object](f func(ctx context.Context, resource T) error) ResourceOption[T] {
-	return func(c *Resource[T]) {
-		c.onFinalizeF = f
-	}
-}
-
-func NewResource[T client.Object](_ T, opts ...ResourceOption[T]) *Resource[T] {
-	c := &Resource[T]{}
-
-	for _, opt := range opts {
-		opt(c)
-	}
-
-	return c
-}
-
-func (c *Resource[T]) Kind() string {
+func (c *Resource[K, T]) Kind() string {
 	return reflect.TypeOf(c.output).Elem().Name()
 }
 
-func (c *Resource[T]) ObjectMetaGenerator() (obj client.Object, skip bool, err error) {
+func (c *Resource[K, T]) ObjectMetaGenerator() (obj client.Object, skip bool, err error) {
 	if reflect.ValueOf(c.output).IsNil() {
 		c.output = reflect.New(reflect.TypeOf(c.output).Elem()).Interface().(T)
 	}
@@ -163,7 +68,7 @@ func (c *Resource[T]) ObjectMetaGenerator() (obj client.Object, skip bool, err e
 	return c.output, c.shouldDeleteF != nil && c.shouldDeleteF(), nil
 }
 
-func (c *Resource[T]) ID() string {
+func (c *Resource[K, T]) ID() string {
 	if c.userIdentifier != "" {
 		return c.userIdentifier
 	}
@@ -173,7 +78,7 @@ func (c *Resource[T]) ID() string {
 	return fmt.Sprintf("%v,%v", c.Kind(), key)
 }
 
-func (c *Resource[T]) Set(obj client.Object) {
+func (c *Resource[K, T]) Set(obj client.Object) {
 	if reflect.TypeOf(c.output) == reflect.TypeOf(obj) {
 		if reflect.ValueOf(c.output).IsNil() {
 			c.output = reflect.New(reflect.TypeOf(c.output).Elem()).Interface().(T)
@@ -183,11 +88,11 @@ func (c *Resource[T]) Set(obj client.Object) {
 	}
 }
 
-func (c *Resource[T]) Get() client.Object {
+func (c *Resource[K, T]) Get() client.Object {
 	return c.output
 }
 
-func (c *Resource[T]) IsReady(obj client.Object) bool {
+func (c *Resource[K, T]) IsReady(obj client.Object) bool {
 	if c.isReadyF != nil {
 		if typedObj, ok := obj.(T); ok {
 			return c.isReadyF(typedObj)
@@ -200,7 +105,7 @@ func (c *Resource[T]) IsReady(obj client.Object) bool {
 	return false
 }
 
-func (c *Resource[T]) RequiresManualDeletion(obj client.Object) bool {
+func (c *Resource[K, T]) RequiresManualDeletion(obj client.Object) bool {
 	if c.requiresDeletionF != nil {
 		if typedObj, ok := obj.(T); ok {
 			return c.requiresDeletionF(typedObj)
@@ -213,21 +118,21 @@ func (c *Resource[T]) RequiresManualDeletion(obj client.Object) bool {
 	return false
 }
 
-func (c *Resource[T]) ShouldDeleteNow() bool {
+func (c *Resource[K, T]) ShouldDeleteNow() bool {
 	if c.shouldDeleteF != nil {
 		return c.shouldDeleteF()
 	}
 	return false
 }
 
-func (c *Resource[T]) BeforeReconcile(ctx context.Context) error {
+func (c *Resource[K, T]) BeforeReconcile(ctx Context[K]) error {
 	if c.beforeReconcileF != nil {
 		return c.beforeReconcileF(ctx)
 	}
 	return nil
 }
 
-func (c *Resource[T]) AfterReconcile(ctx context.Context, resource client.Object) error {
+func (c *Resource[K, T]) AfterReconcile(ctx Context[K], resource client.Object) error {
 	if c.afterReconcileF != nil {
 		if typedObj, ok := resource.(T); ok {
 			return c.afterReconcileF(ctx, typedObj)
@@ -240,7 +145,7 @@ func (c *Resource[T]) AfterReconcile(ctx context.Context, resource client.Object
 	return nil
 }
 
-func (c *Resource[T]) OnCreate(ctx context.Context, resource client.Object) error {
+func (c *Resource[K, T]) OnCreate(ctx Context[K], resource client.Object) error {
 	if c.onCreateF != nil {
 		if typedObj, ok := resource.(T); ok {
 			return c.onCreateF(ctx, typedObj)
@@ -253,7 +158,7 @@ func (c *Resource[T]) OnCreate(ctx context.Context, resource client.Object) erro
 	return nil
 }
 
-func (c *Resource[T]) OnUpdate(ctx context.Context, resource client.Object) error {
+func (c *Resource[K, T]) OnUpdate(ctx Context[K], resource client.Object) error {
 	if c.onUpdateF != nil {
 		if typedObj, ok := resource.(T); ok {
 			return c.onUpdateF(ctx, typedObj)
@@ -266,7 +171,7 @@ func (c *Resource[T]) OnUpdate(ctx context.Context, resource client.Object) erro
 	return nil
 }
 
-func (c *Resource[T]) OnDelete(ctx context.Context, resource client.Object) error {
+func (c *Resource[K, T]) OnDelete(ctx Context[K], resource client.Object) error {
 	if c.onDeleteF != nil {
 		if typedObj, ok := resource.(T); ok {
 			return c.onDeleteF(ctx, typedObj)
@@ -279,7 +184,7 @@ func (c *Resource[T]) OnDelete(ctx context.Context, resource client.Object) erro
 	return nil
 }
 
-func (c *Resource[T]) OnFinalize(ctx context.Context, resource client.Object) error {
+func (c *Resource[K, T]) OnFinalize(ctx Context[K], resource client.Object) error {
 	if c.onFinalizeF != nil {
 		if typedObj, ok := resource.(T); ok {
 			return c.onFinalizeF(ctx, typedObj)
@@ -292,7 +197,7 @@ func (c *Resource[T]) OnFinalize(ctx context.Context, resource client.Object) er
 	return nil
 }
 
-func (c *Resource[T]) GetMutator(obj client.Object) func() error {
+func (c *Resource[K, T]) GetMutator(obj client.Object) func() error {
 	return func() error {
 		if c.mutateF != nil {
 			if typedObj, ok := obj.(T); ok {
@@ -305,29 +210,4 @@ func (c *Resource[T]) GetMutator(obj client.Object) func() error {
 		}
 		return nil
 	}
-}
-
-type UntypedResource struct {
-	*Resource[*unstructured.Unstructured]
-	gvk schema.GroupVersionKind
-}
-
-func NewUntypedResource(gvk schema.GroupVersionKind, opts ...ResourceOption[*unstructured.Unstructured]) *UntypedResource {
-	c := &UntypedResource{
-		Resource: NewResource(&unstructured.Unstructured{}, opts...),
-		gvk:      gvk,
-	}
-
-	return c
-}
-
-func (c *UntypedResource) New() client.Object {
-	obj := NewInstanceOf(c.output)
-	obj.SetAPIVersion(c.gvk.GroupVersion().String())
-	obj.SetKind(c.gvk.Kind)
-	return obj
-}
-
-func (c *UntypedResource) Kind() string {
-	return c.gvk.Kind
 }

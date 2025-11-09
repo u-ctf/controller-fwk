@@ -3,6 +3,7 @@
 # It should be run by config/default
 resources:
 - bases/test.example.com_tests.yaml
+- bases/test.example.com_untypedtests.yaml
 # +kubebuilder:scaffold:crdkustomizeresource
 
 patches:

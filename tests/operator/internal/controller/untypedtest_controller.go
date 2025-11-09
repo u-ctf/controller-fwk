@@ -34,8 +34,8 @@ import (
 	test_resources "operator/internal/controller/test/resources"
 )
 
-// TestReconciler reconciles a Test object
-type TestReconciler struct {
+// UntypedTestReconciler reconciles a UntypedTest object
+type UntypedTestReconciler struct {
 	client.Client
 	ctrlfwk.WatchCache
 	instrument.Instrumenter
@@ -44,59 +44,57 @@ type TestReconciler struct {
 	RuntimeScheme *runtime.Scheme
 }
 
-func (TestReconciler) For(*testv1.Test) {}
+func (UntypedTestReconciler) For(*testv1.UntypedTest) {}
 
-var _ ctrlfwk.Reconciler[*testv1.Test] = &TestReconciler{}
-var _ ctrlfwk.ReconcilerWithDependencies[*testv1.Test] = &TestReconciler{}
-var _ ctrlfwk.ReconcilerWithResources[*testv1.Test] = &TestReconciler{}
-var _ ctrlfwk.ReconcilerWithWatcher[*testv1.Test] = &TestReconciler{}
+var _ ctrlfwk.Reconciler[*testv1.UntypedTest] = &UntypedTestReconciler{}
+var _ ctrlfwk.ReconcilerWithDependencies[*testv1.UntypedTest] = &UntypedTestReconciler{}
+var _ ctrlfwk.ReconcilerWithResources[*testv1.UntypedTest] = &UntypedTestReconciler{}
+var _ ctrlfwk.ReconcilerWithWatcher[*testv1.UntypedTest] = &UntypedTestReconciler{}
 
-// +kubebuilder:rbac:groups=test.example.com,resources=tests,verbs=get;list;watch;create;update;patch;delete
-// +kubebuilder:rbac:groups=test.example.com,resources=tests/status,verbs=get;update;patch
-// +kubebuilder:rbac:groups=test.example.com,resources=tests/finalizers,verbs=update
-// +kubebuilder:rbac:groups="",resources=configmaps,verbs=get;list;watch;create;update;patch;delete
-// +kubebuilder:rbac:groups="",resources=secrets,verbs=get;list;watch;patch
+// +kubebuilder:rbac:groups=test.example.com,resources=untypedtests,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=test.example.com,resources=untypedtests/status,verbs=get;update;patch
+// +kubebuilder:rbac:groups=test.example.com,resources=untypedtests/finalizers,verbs=update
 
-func (reconciler *TestReconciler) GetDependencies(ctx ctrlfwk.Context[*testv1.Test], req ctrl.Request) (dependencies []ctrlfwk.GenericDependency[*testv1.Test], err error) {
-	return []ctrlfwk.GenericDependency[*testv1.Test]{
-		test_dependencies.NewSecretDependency(ctx, reconciler),
+func (reconciler *UntypedTestReconciler) GetDependencies(ctx ctrlfwk.Context[*testv1.UntypedTest], req ctrl.Request) (dependencies []ctrlfwk.GenericDependency[*testv1.UntypedTest], err error) {
+	return []ctrlfwk.GenericDependency[*testv1.UntypedTest]{
+		test_dependencies.NewUntypedSecretDependency(ctx, reconciler),
 	}, nil
 }
 
-func (reconciler *TestReconciler) GetResources(ctx ctrlfwk.Context[*testv1.Test], req ctrl.Request) ([]ctrlfwk.GenericResource[*testv1.Test], error) {
-	return []ctrlfwk.GenericResource[*testv1.Test]{
-		test_resources.NewConfigMapResource(ctx, reconciler),
+func (reconciler *UntypedTestReconciler) GetResources(ctx ctrlfwk.Context[*testv1.UntypedTest], req ctrl.Request) ([]ctrlfwk.GenericResource[*testv1.UntypedTest], error) {
+	return []ctrlfwk.GenericResource[*testv1.UntypedTest]{
+		test_resources.NewUntypedConfigMapResource(ctx, reconciler),
 	}, nil
 }
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster closer to the desired state.
 // TODO(user): Modify the Reconcile function to compare the state specified by
-// the Test object against the actual cluster state, and then
+// the UntypedTest object against the actual cluster state, and then
 // perform operations to make the cluster state reflect the state specified by
 // the user.
 //
 // For more details, check Reconcile and its Result here:
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.22.1/pkg/reconcile
-func (reconciler *TestReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+func (reconciler *UntypedTestReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	logger := logf.FromContext(ctx)
 
-	stepper := ctrlfwk.NewStepperFor[*testv1.Test](logger).
+	stepper := ctrlfwk.NewStepperFor[*testv1.UntypedTest](logger).
 		WithStep(ctrlfwk.NewFindControllerCustomResourceStep(reconciler)).
 		WithStep(ctrlfwk.NewResolveDynamicDependenciesStep(reconciler)).
 		WithStep(ctrlfwk.NewReconcileResourcesStep(reconciler)).
 		WithStep(ctrlfwk.NewEndStep(reconciler, ctrlfwk.SetReadyCondition(reconciler))).
 		Build()
 
-	context := ctrlfwk.NewContext[*testv1.Test](ctx)
+	context := ctrlfwk.NewContext[*testv1.UntypedTest](ctx)
 	return stepper.Execute(context, req)
 }
 
 // SetupWithManager sets up the controller with the Manager.
-func (reconciler *TestReconciler) SetupWithManager(mgr ctrl.Manager) error {
+func (reconciler *UntypedTestReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	ctrler, err := instrument.InstrumentedControllerManagedBy(reconciler, mgr).
-		For(&testv1.Test{}, builder.WithPredicates(predicate.GenerationChangedPredicate{})).
-		Named("test").
+		For(&testv1.UntypedTest{}, builder.WithPredicates(predicate.GenerationChangedPredicate{})).
+		Named("untypedtest").
 		Build(reconciler)
 
 	reconciler.WatchCache.SetController(ctrler)
