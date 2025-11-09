@@ -22,6 +22,9 @@ resources:
 # default, aiding admins in cluster management. Those roles are
 # not used by the operator itself. You can comment the following lines
 # if you do not want those helpers be installed with your Project.
+- untypedtest_admin_role.yaml
+- untypedtest_editor_role.yaml
+- untypedtest_viewer_role.yaml
 - test_admin_role.yaml
 - test_editor_role.yaml
 - test_viewer_role.yaml

@@ -1,20 +1,25 @@
 apiVersion: test.example.com/v1
-kind: Test
+kind: UntypedTest
 metadata:
   name: test-sample
 spec:
   dependencies:
     secret:
-      name: test-secret5
+      name: test-secret4
       namespace: default
   configMap:
-    enabled: false
+    enabled: true
+    name: test-configmap2
+    data:
+      key1: value1
+      key2: value2
 ---
 apiVersion: v1
 kind: Secret
 metadata:
   name: test-secret4
+  namespace: default
 type: Opaque
 stringData:
-  ready: "true"
   data: "secret-data"
+  ready: "true"

@@ -6,6 +6,12 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
+type ImplementsCustomResource[K client.Object] interface {
+	GetCleanCustomResource() K
+	GetCustomResource() K
+	SetCustomResource(key K)
+}
+
 type CustomResource[K client.Object] struct {
 	cleanObject K
 	CR          K

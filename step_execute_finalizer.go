@@ -12,17 +12,21 @@ import (
 
 type FinalizingFunc func(ctx context.Context, logger logr.Logger, req ctrl.Request) (done bool, err error)
 
+func NilFinalizerFunc(ctx context.Context, logger logr.Logger, req ctrl.Request) (done bool, err error) {
+	return true, nil
+}
+
 func NewExecuteFinalizerStep[
 	ControllerResourceType ControllerCustomResource,
 ](
 	reconciler Reconciler[ControllerResourceType],
 	finalizerName string,
 	finalizerFunc FinalizingFunc,
-) Step {
-	return Step{
+) Step[ControllerResourceType] {
+	return Step[ControllerResourceType]{
 		Name: fmt.Sprintf(StepExecuteFinalizer, finalizerName),
-		Step: func(ctx context.Context, logger logr.Logger, req ctrl.Request) StepResult {
-			cr := reconciler.GetCustomResource()
+		Step: func(ctx Context[ControllerResourceType], logger logr.Logger, req ctrl.Request) StepResult {
+			cr := ctx.GetCustomResource()
 
 			if !IsFinalizing(cr) {
 				return ResultSuccess()
@@ -37,7 +41,7 @@ func NewExecuteFinalizerStep[
 				// Remove finalizer from CR
 				changed := controllerutil.RemoveFinalizer(cr, finalizerName)
 				if changed {
-					err := reconciler.Patch(context.TODO(), cr, client.MergeFrom(reconciler.GetCleanCustomResource()))
+					err := reconciler.Patch(ctx, cr, client.MergeFrom(ctx.GetCleanCustomResource()))
 					if err != nil {
 						return ResultInError(err)
 					}

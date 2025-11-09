@@ -12,6 +12,9 @@ Dockerfile.cross
 
 # Output of the go coverage tool, specifically when used with LiteIDE
 *.out
+coverage.out
+coverage.html
+coverage-data/
 
 # Go workspace file
 go.work
