@@ -12,7 +12,7 @@
 
 ### Misc
 
-- ci: use wrapping technique for super secret auth ([0e7c84c](https://github.com/u-ctf/controller-fwk/commit/0e7c84cc926b4c0f05c4b75874c7339fd60f71da))
+- ci: use wrapping technique for super secret auth ([c93a5b9](https://github.com/u-ctf/controller-fwk/commit/c93a5b914bdad0c93cfebb75542ce649d8455d34))
 - ci: add tests coverage ([55b8330](https://github.com/u-ctf/controller-fwk/commit/55b833020b4700d4dca4e7d6424ab627de883960))
 - ci: make tests faster via parallelization ([d5f9407](https://github.com/u-ctf/controller-fwk/commit/d5f9407632836ee36faa0ea9b018b981adfa3962))
 - feat(concurrency): add context, fix builders and add more tests ([d3310a7](https://github.com/u-ctf/controller-fwk/commit/d3310a7fdc319fb70c30c07757620be6d0d04960))
