@@ -13,13 +13,15 @@ import (
 
 func NewResolveDependencyStep[
 	ControllerResourceType ControllerCustomResource,
+	ContextType Context[ControllerResourceType],
 ](
+	_ ContextType,
 	reconciler Reconciler[ControllerResourceType],
-	dependency GenericDependency[ControllerResourceType],
-) Step[ControllerResourceType] {
-	return Step[ControllerResourceType]{
+	dependency GenericDependency[ControllerResourceType, ContextType],
+) Step[ControllerResourceType, ContextType] {
+	return Step[ControllerResourceType, ContextType]{
 		Name: fmt.Sprintf(StepResolveDependency, dependency.Kind()),
-		Step: func(ctx Context[ControllerResourceType], logger logr.Logger, req ctrl.Request) StepResult {
+		Step: func(ctx ContextType, logger logr.Logger, req ctrl.Request) StepResult {
 			var dep client.Object
 
 			funcResult := func() StepResult {

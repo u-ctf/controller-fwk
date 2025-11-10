@@ -22,16 +22,16 @@ type ReconcilerWithWatcher[ControllerResourceType ControllerCustomResource] inte
 	Watcher
 }
 
-type ReconcilerWithDependencies[ControllerResourceType ControllerCustomResource] interface {
+type ReconcilerWithDependencies[ControllerResourceType ControllerCustomResource, ContextType Context[ControllerResourceType]] interface {
 	Reconciler[ControllerResourceType]
 
-	GetDependencies(ctx Context[ControllerResourceType], req ctrl.Request) ([]GenericDependency[ControllerResourceType], error)
+	GetDependencies(ctx ContextType, req ctrl.Request) ([]GenericDependency[ControllerResourceType, ContextType], error)
 }
 
-type ReconcilerWithResources[ControllerResourceType ControllerCustomResource] interface {
+type ReconcilerWithResources[ControllerResourceType ControllerCustomResource, ContextType Context[ControllerResourceType]] interface {
 	Reconciler[ControllerResourceType]
 
-	GetResources(ctx Context[ControllerResourceType], req ctrl.Request) ([]GenericResource[ControllerResourceType], error)
+	GetResources(ctx ContextType, req ctrl.Request) ([]GenericResource[ControllerResourceType, ContextType], error)
 }
 
 type ReconcilerWithEventRecorder[ControllerResourceType ControllerCustomResource] interface {

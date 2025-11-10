@@ -12,13 +12,15 @@ import (
 
 func NewReconcileResourceStep[
 	ControllerResourceType ControllerCustomResource,
+	ContextType Context[ControllerResourceType],
 ](
+	_ ContextType,
 	reconciler Reconciler[ControllerResourceType],
-	resource GenericResource[ControllerResourceType],
-) Step[ControllerResourceType] {
-	return Step[ControllerResourceType]{
+	resource GenericResource[ControllerResourceType, ContextType],
+) Step[ControllerResourceType, ContextType] {
+	return Step[ControllerResourceType, ContextType]{
 		Name: fmt.Sprintf(StepReconcileResource, resource.Kind()),
-		Step: func(ctx Context[ControllerResourceType], logger logr.Logger, req ctrl.Request) StepResult {
+		Step: func(ctx ContextType, logger logr.Logger, req ctrl.Request) StepResult {
 			var desired client.Object
 			var result StepResult
 
@@ -102,11 +104,12 @@ func NewReconcileResourceStep[
 
 func getDesiredObject[
 	ControllerResourceType ControllerCustomResource,
+	ContextType Context[ControllerResourceType],
 ](
 	reconciler Reconciler[ControllerResourceType],
-	resource GenericResource[ControllerResourceType],
-) func(ctx Context[ControllerResourceType], req ctrl.Request) (client.Object, StepResult) {
-	return func(ctx Context[ControllerResourceType], req ctrl.Request) (client.Object, StepResult) {
+	resource GenericResource[ControllerResourceType, ContextType],
+) func(ctx ContextType, req ctrl.Request) (client.Object, StepResult) {
+	return func(ctx ContextType, req ctrl.Request) (client.Object, StepResult) {
 		desired, delete, err := resource.ObjectMetaGenerator()
 		if delete {
 			if desired != nil && desired.GetName() != "" {

@@ -8,24 +8,24 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-type UntypedDependency[K client.Object] struct {
-	*Dependency[K, *unstructured.Unstructured]
+type UntypedDependency[CustomResourceType client.Object, ContextType Context[CustomResourceType]] struct {
+	*Dependency[CustomResourceType, ContextType, *unstructured.Unstructured]
 	gvk schema.GroupVersionKind
 }
 
-var _ GenericDependency[client.Object] = &UntypedDependency[client.Object]{}
+var _ GenericDependency[client.Object, Context[client.Object]] = &UntypedDependency[client.Object, Context[client.Object]]{}
 
-func (c *UntypedDependency[K]) New() client.Object {
+func (c *UntypedDependency[CustomResourceType, ContextType]) New() client.Object {
 	out := &unstructured.Unstructured{}
 	out.SetGroupVersionKind(c.gvk)
 	return out
 }
 
-func (c *UntypedDependency[K]) Kind() string {
+func (c *UntypedDependency[CustomResourceType, ContextType]) Kind() string {
 	return fmt.Sprintf("Untyped%s", c.gvk.Kind)
 }
 
-func (c *UntypedDependency[K]) Set(obj client.Object) {
+func (c *UntypedDependency[CustomResourceType, ContextType]) Set(obj client.Object) {
 	if c.output == nil {
 		c.output = &unstructured.Unstructured{}
 		c.output.SetGroupVersionKind(c.gvk)

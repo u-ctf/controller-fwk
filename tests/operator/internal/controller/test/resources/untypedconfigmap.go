@@ -16,7 +16,7 @@ import (
 )
 
 // NewUntypedConfigMapResource creates a new Resource representing a ConfigMap
-func NewUntypedConfigMapResource(ctx ctrlfwk.Context[*testv1.UntypedTest], reconciler ctrlfwk.ReconcilerWithEventRecorder[*testv1.UntypedTest]) *ctrlfwk.UntypedResource[*testv1.UntypedTest] {
+func NewUntypedConfigMapResource(ctx ctrlfwk.Context[*testv1.UntypedTest], reconciler ctrlfwk.ReconcilerWithEventRecorder[*testv1.UntypedTest]) *ctrlfwk.UntypedResource[*testv1.UntypedTest, ctrlfwk.Context[*testv1.UntypedTest]] {
 	cr := ctx.GetCustomResource()
 
 	return ctrlfwk.NewUntypedResourceBuilder(ctx, schema.GroupVersionKind{Group: "", Version: "v1", Kind: "ConfigMap"}).

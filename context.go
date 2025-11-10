@@ -14,17 +14,19 @@ type Context[K client.Object] interface {
 	ImplementsCustomResource[K]
 }
 
-type ContextWithData[K client.Object, D any] interface {
-	Context[K]
-	Data() D
-}
-
 type baseContext[K client.Object] struct {
 	context.Context
 	CustomResource[K]
 }
 
-func NewContext[K client.Object](ctx context.Context) Context[K] {
+// NewContext creates a new Context for the given reconciler and base context.
+// K is the type of the custom resource being reconciled.
+// You can use it as such:
+//
+//	func (reconciler *SecretReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+//		logger := logf.FromContext(ctx)
+//		context := ctrlfwk.NewContext(ctx, reconciler)
+func NewContext[K client.Object](ctx context.Context, reconciler Reconciler[K]) Context[K] {
 	return &baseContext[K]{
 		Context:        ctx,
 		CustomResource: CustomResource[K]{},
@@ -33,24 +35,25 @@ func NewContext[K client.Object](ctx context.Context) Context[K] {
 
 var _ Context[*corev1.Secret] = &baseContext[*corev1.Secret]{}
 
-type contextWithData[K client.Object, D any] struct {
+// ContextWithData is a context that holds additional data of type D along with the base context.
+// K is the type of the custom resource being reconciled.
+// D is the type of the additional data to be stored in the context.
+type ContextWithData[K client.Object, D any] struct {
 	Context[K]
 	data D
 }
 
-var _ ContextWithData[*corev1.Secret, int] = &contextWithData[*corev1.Secret, int]{}
-
-func (c *contextWithData[K, D]) Data() D {
-	return c.data
-}
-
-func NewContextWithData[K client.Object, D any](ctx context.Context, data D) ContextWithData[K, D] {
-	return &contextWithData[K, D]{
+// NewContextWithData creates a new ContextWithData for the given reconciler, base context, and data.
+// K is the type of the custom resource being reconciled.
+// D is the type of the additional data to be stored in the context.
+// You can use it as such:
+//
+//	func (reconciler *TestReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+//		logger := logf.FromContext(ctx)
+//		context := ctrlfwk.NewContextWithData(ctx, reconciler, &MyDataType{})
+func NewContextWithData[K client.Object, D any](ctx context.Context, reconciler Reconciler[K], data D) *ContextWithData[K, D] {
+	return &ContextWithData[K, D]{
 		Context: &baseContext[K]{Context: ctx},
 		data:    data,
 	}
-}
-
-func ToContextWithData[D any, K client.Object](ctx Context[K]) ContextWithData[K, D] {
-	return ctx.(ContextWithData[K, D])
 }
