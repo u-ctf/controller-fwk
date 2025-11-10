@@ -18,14 +18,16 @@ func NilFinalizerFunc(ctx context.Context, logger logr.Logger, req ctrl.Request)
 
 func NewExecuteFinalizerStep[
 	ControllerResourceType ControllerCustomResource,
+	ContextType Context[ControllerResourceType],
 ](
+	_ ContextType,
 	reconciler Reconciler[ControllerResourceType],
 	finalizerName string,
 	finalizerFunc FinalizingFunc,
-) Step[ControllerResourceType] {
-	return Step[ControllerResourceType]{
+) Step[ControllerResourceType, ContextType] {
+	return Step[ControllerResourceType, ContextType]{
 		Name: fmt.Sprintf(StepExecuteFinalizer, finalizerName),
-		Step: func(ctx Context[ControllerResourceType], logger logr.Logger, req ctrl.Request) StepResult {
+		Step: func(ctx ContextType, logger logr.Logger, req ctrl.Request) StepResult {
 			cr := ctx.GetCustomResource()
 
 			if !IsFinalizing(cr) {

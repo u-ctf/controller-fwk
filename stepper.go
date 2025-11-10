@@ -15,32 +15,32 @@ import (
 // whether to continue, requeue, or return an error.
 // The Stepper can be used in a controller's Reconcile function to manage
 // the execution of multiple steps in a clean and organized manner.
-type Stepper[K client.Object] struct {
+type Stepper[K client.Object, C Context[K]] struct {
 	logger logr.Logger
-	steps  []Step[K]
+	steps  []Step[K, C]
 }
 
-type StepperBuilder[K client.Object] struct {
+type StepperBuilder[K client.Object, C Context[K]] struct {
 	logger logr.Logger
-	steps  []Step[K]
+	steps  []Step[K, C]
 }
 
-func NewStepperFor[K client.Object](logger logr.Logger) *StepperBuilder[K] {
-	return &StepperBuilder[K]{
+func NewStepperFor[K client.Object, C Context[K]](ctx C, logger logr.Logger) *StepperBuilder[K, C] {
+	return &StepperBuilder[K, C]{
 		logger: logger,
-		steps:  []Step[K]{},
+		steps:  []Step[K, C]{},
 	}
 }
 
 // WithLogger sets the logger for the Stepper.
-func (s *StepperBuilder[K]) WithStep(step Step[K]) *StepperBuilder[K] {
+func (s *StepperBuilder[K, C]) WithStep(step Step[K, C]) *StepperBuilder[K, C] {
 	s.steps = append(s.steps, step)
 	return s
 }
 
 // WithLogger sets the logger for the Stepper.
-func (s *StepperBuilder[K]) Build() *Stepper[K] {
-	return &Stepper[K]{
+func (s *StepperBuilder[K, C]) Build() *Stepper[K, C] {
+	return &Stepper[K, C]{
 		logger: s.logger,
 		steps:  s.steps,
 	}
@@ -93,22 +93,22 @@ func ResultSuccess() StepResult {
 	return StepResult{}
 }
 
-type Step[K client.Object] struct {
+type Step[K client.Object, C Context[K]] struct {
 	// Name is the name of the step
 	Name string
 
 	// Step is the function to execute
-	Step func(ctx Context[K], logger logr.Logger, req ctrl.Request) StepResult
+	Step func(ctx C, logger logr.Logger, req ctrl.Request) StepResult
 }
 
-func NewStep[K client.Object](name string, step func(ctx Context[K], logger logr.Logger, req ctrl.Request) StepResult) Step[K] {
-	return Step[K]{
+func NewStep[K client.Object, C Context[K]](name string, step func(ctx C, logger logr.Logger, req ctrl.Request) StepResult) Step[K, C] {
+	return Step[K, C]{
 		Name: name,
 		Step: step,
 	}
 }
 
-func (stepper *Stepper[K]) Execute(ctx Context[K], req ctrl.Request) (ctrl.Result, error) {
+func (stepper *Stepper[K, C]) Execute(ctx C, req ctrl.Request) (ctrl.Result, error) {
 	logger := stepper.logger
 
 	startedAt := time.Now()

@@ -47,22 +47,22 @@ type UntypedTestReconciler struct {
 func (UntypedTestReconciler) For(*testv1.UntypedTest) {}
 
 var _ ctrlfwk.Reconciler[*testv1.UntypedTest] = &UntypedTestReconciler{}
-var _ ctrlfwk.ReconcilerWithDependencies[*testv1.UntypedTest] = &UntypedTestReconciler{}
-var _ ctrlfwk.ReconcilerWithResources[*testv1.UntypedTest] = &UntypedTestReconciler{}
+var _ ctrlfwk.ReconcilerWithDependencies[*testv1.UntypedTest, ctrlfwk.Context[*testv1.UntypedTest]] = &UntypedTestReconciler{}
+var _ ctrlfwk.ReconcilerWithResources[*testv1.UntypedTest, ctrlfwk.Context[*testv1.UntypedTest]] = &UntypedTestReconciler{}
 var _ ctrlfwk.ReconcilerWithWatcher[*testv1.UntypedTest] = &UntypedTestReconciler{}
 
 // +kubebuilder:rbac:groups=test.example.com,resources=untypedtests,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=test.example.com,resources=untypedtests/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups=test.example.com,resources=untypedtests/finalizers,verbs=update
 
-func (reconciler *UntypedTestReconciler) GetDependencies(ctx ctrlfwk.Context[*testv1.UntypedTest], req ctrl.Request) (dependencies []ctrlfwk.GenericDependency[*testv1.UntypedTest], err error) {
-	return []ctrlfwk.GenericDependency[*testv1.UntypedTest]{
+func (reconciler *UntypedTestReconciler) GetDependencies(ctx ctrlfwk.Context[*testv1.UntypedTest], req ctrl.Request) (dependencies []ctrlfwk.GenericDependency[*testv1.UntypedTest, ctrlfwk.Context[*testv1.UntypedTest]], err error) {
+	return []ctrlfwk.GenericDependency[*testv1.UntypedTest, ctrlfwk.Context[*testv1.UntypedTest]]{
 		test_dependencies.NewUntypedSecretDependency(ctx, reconciler),
 	}, nil
 }
 
-func (reconciler *UntypedTestReconciler) GetResources(ctx ctrlfwk.Context[*testv1.UntypedTest], req ctrl.Request) ([]ctrlfwk.GenericResource[*testv1.UntypedTest], error) {
-	return []ctrlfwk.GenericResource[*testv1.UntypedTest]{
+func (reconciler *UntypedTestReconciler) GetResources(ctx ctrlfwk.Context[*testv1.UntypedTest], req ctrl.Request) ([]ctrlfwk.GenericResource[*testv1.UntypedTest, ctrlfwk.Context[*testv1.UntypedTest]], error) {
+	return []ctrlfwk.GenericResource[*testv1.UntypedTest, ctrlfwk.Context[*testv1.UntypedTest]]{
 		test_resources.NewUntypedConfigMapResource(ctx, reconciler),
 	}, nil
 }
@@ -79,14 +79,15 @@ func (reconciler *UntypedTestReconciler) GetResources(ctx ctrlfwk.Context[*testv
 func (reconciler *UntypedTestReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	logger := logf.FromContext(ctx)
 
-	stepper := ctrlfwk.NewStepperFor[*testv1.UntypedTest](logger).
-		WithStep(ctrlfwk.NewFindControllerCustomResourceStep(reconciler)).
-		WithStep(ctrlfwk.NewResolveDynamicDependenciesStep(reconciler)).
-		WithStep(ctrlfwk.NewReconcileResourcesStep(reconciler)).
-		WithStep(ctrlfwk.NewEndStep(reconciler, ctrlfwk.SetReadyCondition(reconciler))).
+	context := ctrlfwk.NewContext(ctx, reconciler)
+
+	stepper := ctrlfwk.NewStepperFor(context, logger).
+		WithStep(ctrlfwk.NewFindControllerCustomResourceStep(context, reconciler)).
+		WithStep(ctrlfwk.NewResolveDynamicDependenciesStep(context, reconciler)).
+		WithStep(ctrlfwk.NewReconcileResourcesStep(context, reconciler)).
+		WithStep(ctrlfwk.NewEndStep(context, reconciler, ctrlfwk.SetReadyCondition(reconciler))).
 		Build()
 
-	context := ctrlfwk.NewContext[*testv1.UntypedTest](ctx)
 	return stepper.Execute(context, req)
 }
 
