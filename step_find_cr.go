@@ -10,12 +10,14 @@ import (
 
 func NewFindControllerCustomResourceStep[
 	ControllerResourceType ControllerCustomResource,
+	ContextType Context[ControllerResourceType],
 ](
+	_ ContextType,
 	reconciler Reconciler[ControllerResourceType],
-) Step[ControllerResourceType] {
-	return Step[ControllerResourceType]{
+) Step[ControllerResourceType, ContextType] {
+	return Step[ControllerResourceType, ContextType]{
 		Name: StepFindControllerCustomResource,
-		Step: func(ctx Context[ControllerResourceType], logger logr.Logger, req ctrl.Request) StepResult {
+		Step: func(ctx ContextType, logger logr.Logger, req ctrl.Request) StepResult {
 			cr := ctx.GetCustomResource()
 
 			// Get the controller resource from the client

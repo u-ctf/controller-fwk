@@ -12,7 +12,7 @@ import (
 )
 
 // NewUntypedSecretDependency creates a new Dependency representing a Secret
-func NewUntypedSecretDependency(ctx ctrlfwk.Context[*testv1.UntypedTest], reconciler ctrlfwk.ReconcilerWithEventRecorder[*testv1.UntypedTest]) ctrlfwk.GenericDependency[*testv1.UntypedTest] {
+func NewUntypedSecretDependency(ctx ctrlfwk.Context[*testv1.UntypedTest], reconciler ctrlfwk.ReconcilerWithEventRecorder[*testv1.UntypedTest]) ctrlfwk.GenericDependency[*testv1.UntypedTest, ctrlfwk.Context[*testv1.UntypedTest]] {
 	cr := ctx.GetCustomResource()
 
 	return ctrlfwk.NewUntypedDependencyBuilder(ctx, schema.GroupVersionKind{Group: "", Version: "v1", Kind: "Secret"}).

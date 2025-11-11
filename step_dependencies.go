@@ -9,12 +9,14 @@ import (
 
 func NewResolveDynamicDependenciesStep[
 	ControllerResourceType ControllerCustomResource,
+	ContextType Context[ControllerResourceType],
 ](
-	reconciler ReconcilerWithDependencies[ControllerResourceType],
-) Step[ControllerResourceType] {
-	return Step[ControllerResourceType]{
+	_ ContextType,
+	reconciler ReconcilerWithDependencies[ControllerResourceType, ContextType],
+) Step[ControllerResourceType, ContextType] {
+	return Step[ControllerResourceType, ContextType]{
 		Name: StepResolveDependencies,
-		Step: func(ctx Context[ControllerResourceType], logger logr.Logger, req ctrl.Request) StepResult {
+		Step: func(ctx ContextType, logger logr.Logger, req ctrl.Request) StepResult {
 			dependencies, err := reconciler.GetDependencies(ctx, req)
 			if err != nil {
 				return ResultInError(errors.Wrap(err, "failed to get dependencies"))
@@ -24,7 +26,7 @@ func NewResolveDynamicDependenciesStep[
 
 			// Add the finalizer to clean up "managed by" references
 			// in dependencies when the CR is deleted
-			subStep := NewAddFinalizerStep(reconciler, FinalizerDependenciesManagedBy)
+			subStep := NewAddFinalizerStep(ctx, reconciler, FinalizerDependenciesManagedBy)
 			result := subStep.Step(ctx, logger, req)
 			if result.ShouldReturn() {
 				return result.FromSubStep()
@@ -33,7 +35,7 @@ func NewResolveDynamicDependenciesStep[
 			for _, dependency := range dependencies {
 				subStepLogger := logger.WithValues("dependency", dependency.ID())
 
-				subStep := NewResolveDependencyStep(reconciler, dependency)
+				subStep := NewResolveDependencyStep(ctx, reconciler, dependency)
 				result := subStep.Step(ctx, subStepLogger, req)
 				if result.ShouldReturn() {
 					subStepLogger.Info("Dependency resolution resulted in early return or error")
@@ -54,7 +56,7 @@ func NewResolveDynamicDependenciesStep[
 			}
 
 			// Remove the finalizer, ExecuteFinalizerStep will handle actual removal when finalizing
-			subStep = NewExecuteFinalizerStep(reconciler, FinalizerDependenciesManagedBy, NilFinalizerFunc)
+			subStep = NewExecuteFinalizerStep(ctx, reconciler, FinalizerDependenciesManagedBy, NilFinalizerFunc)
 			result = subStep.Step(ctx, logger, req)
 			if result.ShouldReturn() {
 				return result.FromSubStep()
