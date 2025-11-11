@@ -1,6 +1,6 @@
 # Changelog
 
-## [0.1.0](https://github.com/u-ctf/controller-fwk/releases/tag/0.1.0) - 2025-11-09
+## [0.1.0](https://github.com/u-ctf/controller-fwk/releases/tag/0.1.0) - 2025-11-11
 
 ### ❤️ Thanks to all contributors! ❤️
 
@@ -8,10 +8,12 @@
 
 ### 📈 Enhancement
 
+- feat(context): update context to be more generic [[#7](https://github.com/u-ctf/controller-fwk/pull/7)]
 - feat(concurrency): add context, fix builders and add more tests [[#6](https://github.com/u-ctf/controller-fwk/pull/6)]
 
 ### Misc
 
+- feat(context): update context to be more generic ([c219fef](https://github.com/u-ctf/controller-fwk/commit/c219fefc362daba70f25fd52495edac2985dcec1))
 - ci: use wrapping technique for super secret auth ([c93a5b9](https://github.com/u-ctf/controller-fwk/commit/c93a5b914bdad0c93cfebb75542ce649d8455d34))
 - ci: add tests coverage ([55b8330](https://github.com/u-ctf/controller-fwk/commit/55b833020b4700d4dca4e7d6424ab627de883960))
 - ci: make tests faster via parallelization ([d5f9407](https://github.com/u-ctf/controller-fwk/commit/d5f9407632836ee36faa0ea9b018b981adfa3962))
