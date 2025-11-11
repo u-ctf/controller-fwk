@@ -47,22 +47,22 @@ type UntypedTestReconciler struct {
 func (UntypedTestReconciler) For(*testv1.UntypedTest) {}
 
 var _ ctrlfwk.Reconciler[*testv1.UntypedTest] = &UntypedTestReconciler{}
-var _ ctrlfwk.ReconcilerWithDependencies[*testv1.UntypedTest, ctrlfwk.Context[*testv1.UntypedTest]] = &UntypedTestReconciler{}
-var _ ctrlfwk.ReconcilerWithResources[*testv1.UntypedTest, ctrlfwk.Context[*testv1.UntypedTest]] = &UntypedTestReconciler{}
+var _ ctrlfwk.ReconcilerWithDependencies[*testv1.UntypedTest, testv1.UntypedTestContext] = &UntypedTestReconciler{}
+var _ ctrlfwk.ReconcilerWithResources[*testv1.UntypedTest, testv1.UntypedTestContext] = &UntypedTestReconciler{}
 var _ ctrlfwk.ReconcilerWithWatcher[*testv1.UntypedTest] = &UntypedTestReconciler{}
 
 // +kubebuilder:rbac:groups=test.example.com,resources=untypedtests,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=test.example.com,resources=untypedtests/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups=test.example.com,resources=untypedtests/finalizers,verbs=update
 
-func (reconciler *UntypedTestReconciler) GetDependencies(ctx ctrlfwk.Context[*testv1.UntypedTest], req ctrl.Request) (dependencies []ctrlfwk.GenericDependency[*testv1.UntypedTest, ctrlfwk.Context[*testv1.UntypedTest]], err error) {
-	return []ctrlfwk.GenericDependency[*testv1.UntypedTest, ctrlfwk.Context[*testv1.UntypedTest]]{
+func (reconciler *UntypedTestReconciler) GetDependencies(ctx testv1.UntypedTestContext, req ctrl.Request) (dependencies []testv1.UntypedTestDependency, err error) {
+	return []testv1.UntypedTestDependency{
 		test_dependencies.NewUntypedSecretDependency(ctx, reconciler),
 	}, nil
 }
 
-func (reconciler *UntypedTestReconciler) GetResources(ctx ctrlfwk.Context[*testv1.UntypedTest], req ctrl.Request) ([]ctrlfwk.GenericResource[*testv1.UntypedTest, ctrlfwk.Context[*testv1.UntypedTest]], error) {
-	return []ctrlfwk.GenericResource[*testv1.UntypedTest, ctrlfwk.Context[*testv1.UntypedTest]]{
+func (reconciler *UntypedTestReconciler) GetResources(ctx testv1.UntypedTestContext, req ctrl.Request) ([]testv1.UntypedTestResource, error) {
+	return []testv1.UntypedTestResource{
 		test_resources.NewUntypedConfigMapResource(ctx, reconciler),
 	}, nil
 }
