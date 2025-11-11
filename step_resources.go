@@ -8,12 +8,14 @@ import (
 
 func NewReconcileResourcesStep[
 	ControllerResourceType ControllerCustomResource,
+	ContextType Context[ControllerResourceType],
 ](
-	reconciler ReconcilerWithResources[ControllerResourceType],
-) Step[ControllerResourceType] {
-	return Step[ControllerResourceType]{
+	_ ContextType,
+	reconciler ReconcilerWithResources[ControllerResourceType, ContextType],
+) Step[ControllerResourceType, ContextType] {
+	return Step[ControllerResourceType, ContextType]{
 		Name: StepReconcileResources,
-		Step: func(ctx Context[ControllerResourceType], logger logr.Logger, req ctrl.Request) StepResult {
+		Step: func(ctx ContextType, logger logr.Logger, req ctrl.Request) StepResult {
 			resources, err := reconciler.GetResources(ctx, req)
 			if err != nil {
 				return ResultInError(errors.Wrap(err, "failed to get resources"))
@@ -24,7 +26,7 @@ func NewReconcileResourcesStep[
 			for _, resource := range resources {
 				subStepLogger := logger.WithValues("resource", resource.ID())
 
-				subStep := NewReconcileResourceStep(reconciler, resource)
+				subStep := NewReconcileResourceStep(ctx, reconciler, resource)
 				result := subStep.Step(ctx, subStepLogger, req)
 				if result.ShouldReturn() {
 					subStepLogger.Info("Resource reconciliation resulted in early return or error")

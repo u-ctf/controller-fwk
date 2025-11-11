@@ -8,18 +8,18 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-type UntypedResource[K client.Object] struct {
-	*Resource[K, *unstructured.Unstructured]
+type UntypedResource[CustomResource client.Object, ContextType Context[CustomResource]] struct {
+	*Resource[CustomResource, ContextType, *unstructured.Unstructured]
 	gvk schema.GroupVersionKind
 }
 
-var _ GenericResource[client.Object] = &UntypedResource[client.Object]{}
+var _ GenericResource[client.Object, Context[client.Object]] = &UntypedResource[client.Object, Context[client.Object]]{}
 
-func (c *UntypedResource[K]) Kind() string {
+func (c *UntypedResource[CustomResource, ContextType]) Kind() string {
 	return fmt.Sprintf("Untyped%s", c.gvk.Kind)
 }
 
-func (c *UntypedResource[K]) ObjectMetaGenerator() (obj client.Object, skip bool, err error) {
+func (c *UntypedResource[CustomResource, ContextType]) ObjectMetaGenerator() (obj client.Object, skip bool, err error) {
 	obj, skip, err = c.Resource.ObjectMetaGenerator()
 	if err != nil || skip {
 		obj := &unstructured.Unstructured{}
