@@ -12,7 +12,7 @@ import (
 )
 
 // NewUntypedSecretDependency creates a new Dependency representing a Secret
-func NewUntypedSecretDependency(ctx ctrlfwk.Context[*testv1.UntypedTest], reconciler ctrlfwk.ReconcilerWithEventRecorder[*testv1.UntypedTest]) ctrlfwk.GenericDependency[*testv1.UntypedTest, ctrlfwk.Context[*testv1.UntypedTest]] {
+func NewUntypedSecretDependency(ctx testv1.UntypedTestContext, reconciler ctrlfwk.ReconcilerWithEventRecorder[*testv1.UntypedTest]) testv1.UntypedTestDependency {
 	cr := ctx.GetCustomResource()
 
 	return ctrlfwk.NewUntypedDependencyBuilder(ctx, schema.GroupVersionKind{Group: "", Version: "v1", Kind: "Secret"}).
@@ -23,7 +23,7 @@ func NewUntypedSecretDependency(ctx ctrlfwk.Context[*testv1.UntypedTest], reconc
 			return isUntypedSecretReady(secret)
 		}).
 		WithWaitForReady(true).
-		WithAfterReconcile(func(ctx ctrlfwk.Context[*testv1.UntypedTest], resource *unstructured.Unstructured) error {
+		WithAfterReconcile(func(ctx testv1.UntypedTestContext, resource *unstructured.Unstructured) error {
 			if resource.GetName() == "" {
 				reconciler.Eventf(cr, "Warning", "SecretNotFound", "The required Secret was not found")
 				return SetConditionNotFoundOnUntypedTest(ctx, reconciler)
@@ -50,7 +50,7 @@ func isUntypedSecretReady(secret *unstructured.Unstructured) bool {
 }
 
 func SetConditionNotFoundOnUntypedTest(
-	ctx ctrlfwk.Context[*testv1.UntypedTest],
+	ctx testv1.UntypedTestContext,
 	reconciler ctrlfwk.Reconciler[*testv1.UntypedTest],
 ) error {
 	cr := ctx.GetCustomResource()
@@ -77,7 +77,7 @@ func SetConditionNotFoundOnUntypedTest(
 }
 
 func SetConditionNotReadyOnUntypedTest(
-	ctx ctrlfwk.Context[*testv1.UntypedTest],
+	ctx testv1.UntypedTestContext,
 	reconciler ctrlfwk.Reconciler[*testv1.UntypedTest],
 ) error {
 	cr := ctx.GetCustomResource()
@@ -98,7 +98,7 @@ func SetConditionNotReadyOnUntypedTest(
 }
 
 func CleanupStatusOnOKOnUntypedTest(
-	ctx ctrlfwk.Context[*testv1.UntypedTest],
+	ctx testv1.UntypedTestContext,
 	reconciler ctrlfwk.ReconcilerWithEventRecorder[*testv1.UntypedTest],
 ) error {
 	cr := ctx.GetCustomResource()
