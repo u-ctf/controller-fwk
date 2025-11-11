@@ -1,6 +1,8 @@
 package test_resources
 
 import (
+	"maps"
+
 	ctrlfwk "github.com/u-ctf/controller-fwk"
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/types"
@@ -14,7 +16,7 @@ import (
 )
 
 // NewConfigMapResource creates a new Resource representing a ConfigMap
-func NewConfigMapResource(ctx *ctrlfwk.ContextWithData[*testv1.Test, int], reconciler ctrlfwk.ReconcilerWithEventRecorder[*testv1.Test]) ctrlfwk.GenericResource[*testv1.Test, *ctrlfwk.ContextWithData[*testv1.Test, int]] {
+func NewConfigMapResource(ctx testv1.TestContext, reconciler ctrlfwk.ReconcilerWithEventRecorder[*testv1.Test]) testv1.TestResource {
 	cr := ctx.GetCustomResource()
 
 	return ctrlfwk.NewResourceBuilder(ctx, &corev1.ConfigMap{}).
@@ -37,14 +39,12 @@ func NewConfigMapResource(ctx *ctrlfwk.ContextWithData[*testv1.Test, int], recon
 		}).
 		WithMutator(func(resource *corev1.ConfigMap) (err error) {
 			resource.Data = make(map[string]string)
-			for k, v := range cr.Spec.ConfigMap.Data {
-				resource.Data[k] = v
-			}
+			maps.Copy(resource.Data, cr.Spec.ConfigMap.Data)
 
 			return controllerutil.SetOwnerReference(cr, resource, reconciler.Scheme())
 		}).
 		WithReadinessCondition(func(_ *corev1.ConfigMap) bool { return true }).
-		WithBeforeReconcile(func(ctx *ctrlfwk.ContextWithData[*testv1.Test, int]) error {
+		WithBeforeReconcile(func(ctx testv1.TestContext) error {
 			// This is the following state: The ConfigMap has been disabled
 			if !cr.Spec.ConfigMap.Enabled {
 				if err := CleanupConfigMapOnDeletion(ctx, reconciler); err != nil {
@@ -70,7 +70,7 @@ func NewConfigMapResource(ctx *ctrlfwk.ContextWithData[*testv1.Test, int], recon
 
 			return nil
 		}).
-		WithAfterReconcile(func(ctx *ctrlfwk.ContextWithData[*testv1.Test, int], resource *corev1.ConfigMap) error {
+		WithAfterReconcile(func(ctx testv1.TestContext, resource *corev1.ConfigMap) error {
 			if !cr.Spec.ConfigMap.Enabled {
 				return nil
 			}
@@ -78,15 +78,15 @@ func NewConfigMapResource(ctx *ctrlfwk.ContextWithData[*testv1.Test, int], recon
 			// This is the following state: The ConfigMap is up to date
 			return SetStatusConfigMapIsUpToDate(ctx, reconciler)
 		}).
-		WithAfterCreate(func(ctx *ctrlfwk.ContextWithData[*testv1.Test, int], resource *corev1.ConfigMap) error {
+		WithAfterCreate(func(ctx testv1.TestContext, resource *corev1.ConfigMap) error {
 			reconciler.Eventf(cr, "Normal", "ConfigMapCreated", "ConfigMap %s/%s created", resource.Namespace, resource.Name)
 			return nil
 		}).
-		WithAfterDelete(func(ctx *ctrlfwk.ContextWithData[*testv1.Test, int], resource *corev1.ConfigMap) error {
+		WithAfterDelete(func(ctx testv1.TestContext, resource *corev1.ConfigMap) error {
 			reconciler.Eventf(cr, "Normal", "ConfigMapDeleted", "ConfigMap %s/%s deleted", resource.Namespace, resource.Name)
 			return nil
 		}).
-		WithAfterUpdate(func(ctx *ctrlfwk.ContextWithData[*testv1.Test, int], resource *corev1.ConfigMap) error {
+		WithAfterUpdate(func(ctx testv1.TestContext, resource *corev1.ConfigMap) error {
 			reconciler.Eventf(cr, "Normal", "ConfigMapUpdated", "ConfigMap %s/%s updated", resource.Namespace, resource.Name)
 			return nil
 		}).
@@ -94,7 +94,7 @@ func NewConfigMapResource(ctx *ctrlfwk.ContextWithData[*testv1.Test, int], recon
 }
 
 func CleanupStatusOnConfigMapDeletion(
-	ctx *ctrlfwk.ContextWithData[*testv1.Test, int],
+	ctx testv1.TestContext,
 	reconciler ctrlfwk.Reconciler[*testv1.Test],
 ) error {
 	cr := ctx.GetCustomResource()
@@ -108,7 +108,7 @@ func CleanupStatusOnConfigMapDeletion(
 }
 
 func CleanupConfigMapOnDeletion(
-	ctx *ctrlfwk.ContextWithData[*testv1.Test, int],
+	ctx testv1.TestContext,
 	reconciler ctrlfwk.Reconciler[*testv1.Test],
 ) error {
 	cr := ctx.GetCustomResource()
@@ -125,7 +125,7 @@ func CleanupConfigMapOnDeletion(
 }
 
 func SetStatusConfigMapIsUpToDate(
-	ctx *ctrlfwk.ContextWithData[*testv1.Test, int],
+	ctx testv1.TestContext,
 	reconciler ctrlfwk.Reconciler[*testv1.Test],
 ) error {
 	cr := ctx.GetCustomResource()

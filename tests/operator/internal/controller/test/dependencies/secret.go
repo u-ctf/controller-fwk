@@ -11,7 +11,7 @@ import (
 )
 
 // NewSecretDependency creates a new Dependency representing a Secret
-func NewSecretDependency(ctx *ctrlfwk.ContextWithData[*testv1.Test, int], reconciler ctrlfwk.ReconcilerWithEventRecorder[*testv1.Test]) ctrlfwk.GenericDependency[*testv1.Test, *ctrlfwk.ContextWithData[*testv1.Test, int]] {
+func NewSecretDependency(ctx testv1.TestContext, reconciler ctrlfwk.ReconcilerWithEventRecorder[*testv1.Test]) testv1.TestDependency {
 	cr := ctx.GetCustomResource()
 
 	return ctrlfwk.NewDependencyBuilder(ctx, &corev1.Secret{}).
@@ -22,7 +22,7 @@ func NewSecretDependency(ctx *ctrlfwk.ContextWithData[*testv1.Test, int], reconc
 			return isSecretReady(secret)
 		}).
 		WithWaitForReady(true).
-		WithAfterReconcile(func(ctx *ctrlfwk.ContextWithData[*testv1.Test, int], resource *corev1.Secret) error {
+		WithAfterReconcile(func(ctx testv1.TestContext, resource *corev1.Secret) error {
 			if resource.Name == "" {
 				reconciler.Eventf(cr, "Warning", "SecretNotFound", "The required Secret was not found")
 				return SetConditionNotFound(ctx, reconciler)
@@ -43,7 +43,7 @@ func isSecretReady(secret *corev1.Secret) bool {
 }
 
 func SetConditionNotFound(
-	ctx *ctrlfwk.ContextWithData[*testv1.Test, int],
+	ctx testv1.TestContext,
 	reconciler ctrlfwk.Reconciler[*testv1.Test],
 ) error {
 	cr := ctx.GetCustomResource()
@@ -70,7 +70,7 @@ func SetConditionNotFound(
 }
 
 func SetConditionNotReady(
-	ctx *ctrlfwk.ContextWithData[*testv1.Test, int],
+	ctx testv1.TestContext,
 	reconciler ctrlfwk.Reconciler[*testv1.Test],
 ) error {
 	cr := ctx.GetCustomResource()
@@ -91,7 +91,7 @@ func SetConditionNotReady(
 }
 
 func CleanupStatusOnOK(
-	ctx *ctrlfwk.ContextWithData[*testv1.Test, int],
+	ctx testv1.TestContext,
 	reconciler ctrlfwk.ReconcilerWithEventRecorder[*testv1.Test],
 ) error {
 	cr := ctx.GetCustomResource()
