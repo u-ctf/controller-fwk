@@ -47,8 +47,8 @@ type TestReconciler struct {
 func (TestReconciler) For(*testv1.Test) {}
 
 var _ ctrlfwk.Reconciler[*testv1.Test] = &TestReconciler{}
-var _ ctrlfwk.ReconcilerWithDependencies[*testv1.Test, *ctrlfwk.ContextWithData[*testv1.Test, int]] = &TestReconciler{}
-var _ ctrlfwk.ReconcilerWithResources[*testv1.Test, *ctrlfwk.ContextWithData[*testv1.Test, int]] = &TestReconciler{}
+var _ ctrlfwk.ReconcilerWithDependencies[*testv1.Test, testv1.TestContext] = &TestReconciler{}
+var _ ctrlfwk.ReconcilerWithResources[*testv1.Test, testv1.TestContext] = &TestReconciler{}
 var _ ctrlfwk.ReconcilerWithWatcher[*testv1.Test] = &TestReconciler{}
 
 // +kubebuilder:rbac:groups=test.example.com,resources=tests,verbs=get;list;watch;create;update;patch;delete
@@ -57,14 +57,14 @@ var _ ctrlfwk.ReconcilerWithWatcher[*testv1.Test] = &TestReconciler{}
 // +kubebuilder:rbac:groups="",resources=configmaps,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups="",resources=secrets,verbs=get;list;watch;patch
 
-func (reconciler *TestReconciler) GetDependencies(ctx *ctrlfwk.ContextWithData[*testv1.Test, int], req ctrl.Request) (dependencies []ctrlfwk.GenericDependency[*testv1.Test, *ctrlfwk.ContextWithData[*testv1.Test, int]], err error) {
-	return []ctrlfwk.GenericDependency[*testv1.Test, *ctrlfwk.ContextWithData[*testv1.Test, int]]{
+func (reconciler *TestReconciler) GetDependencies(ctx testv1.TestContext, req ctrl.Request) (dependencies []testv1.TestDependency, err error) {
+	return []testv1.TestDependency{
 		test_dependencies.NewSecretDependency(ctx, reconciler),
 	}, nil
 }
 
-func (reconciler *TestReconciler) GetResources(ctx *ctrlfwk.ContextWithData[*testv1.Test, int], req ctrl.Request) ([]ctrlfwk.GenericResource[*testv1.Test, *ctrlfwk.ContextWithData[*testv1.Test, int]], error) {
-	return []ctrlfwk.GenericResource[*testv1.Test, *ctrlfwk.ContextWithData[*testv1.Test, int]]{
+func (reconciler *TestReconciler) GetResources(ctx testv1.TestContext, req ctrl.Request) ([]testv1.TestResource, error) {
+	return []testv1.TestResource{
 		test_resources.NewConfigMapResource(ctx, reconciler),
 	}, nil
 }
