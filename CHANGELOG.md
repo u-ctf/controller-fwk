@@ -1,6 +1,6 @@
 # Changelog
 
-## [0.1.0](https://github.com/u-ctf/controller-fwk/releases/tag/0.1.0) - 2025-11-11
+## [0.1.0](https://github.com/u-ctf/controller-fwk/releases/tag/0.1.0) - 2025-11-12
 
 ### ❤️ Thanks to all contributors! ❤️
 
@@ -8,12 +8,14 @@
 
 ### 📈 Enhancement
 
+- fix(context): export Data field [[#9](https://github.com/u-ctf/controller-fwk/pull/9)]
 - fix(sample-operator): change typing to use alias and reduce boilerplate [[#8](https://github.com/u-ctf/controller-fwk/pull/8)]
 - feat(context): update context to be more generic [[#7](https://github.com/u-ctf/controller-fwk/pull/7)]
 - feat(concurrency): add context, fix builders and add more tests [[#6](https://github.com/u-ctf/controller-fwk/pull/6)]
 
 ### Misc
 
+- fix(context): export Data field ([05ddbfb](https://github.com/u-ctf/controller-fwk/commit/05ddbfb77a278e6a7b7349ee7b7c447505baabac))
 - fix(sample-operator): change typing to use alias and reduce boilerplate ([b063b6f](https://github.com/u-ctf/controller-fwk/commit/b063b6f24b1cd8bab5a7a9d5b49115992369d651))
 - feat(context): update context to be more generic ([c219fef](https://github.com/u-ctf/controller-fwk/commit/c219fefc362daba70f25fd52495edac2985dcec1))
 - ci: use wrapping technique for super secret auth ([c93a5b9](https://github.com/u-ctf/controller-fwk/commit/c93a5b914bdad0c93cfebb75542ce649d8455d34))
