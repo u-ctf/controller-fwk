@@ -40,7 +40,7 @@ var _ Context[*corev1.Secret] = &baseContext[*corev1.Secret]{}
 // D is the type of the additional data to be stored in the context.
 type ContextWithData[K client.Object, D any] struct {
 	Context[K]
-	data D
+	Data D
 }
 
 // NewContextWithData creates a new ContextWithData for the given reconciler, base context, and data.
@@ -54,6 +54,6 @@ type ContextWithData[K client.Object, D any] struct {
 func NewContextWithData[K client.Object, D any](ctx context.Context, reconciler Reconciler[K], data D) *ContextWithData[K, D] {
 	return &ContextWithData[K, D]{
 		Context: &baseContext[K]{Context: ctx},
-		data:    data,
+		Data:    data,
 	}
 }
