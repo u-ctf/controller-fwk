@@ -1,5 +1,5 @@
 export default {
   commentOnReleasedPullRequests: true,
-  skipCommitsWithoutPullRequest: false,
+  skipCommitsWithoutPullRequest: true,
   skipLabels: ['skip-release', 'skip-changelog', 'regression', 'backport-done'],
 };
