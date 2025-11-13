@@ -1,5 +1,15 @@
 # Changelog
 
+## [1.0.0](https://github.com/u-ctf/controller-fwk/releases/tag/v1.0.0) - 2025-11-13
+
+### ❤️ Thanks to all contributors! ❤️
+
+@Yewolf
+
+### Misc
+
+- break: go to 1.0.0 ([4dea718](https://github.com/u-ctf/controller-fwk/commit/4dea7180cf72e18459cc7dcd9343185ae67f028c))
+
 ## [0.1.0](https://github.com/u-ctf/controller-fwk/releases/tag/0.1.0) - 2025-11-13
 
 ### ❤️ Thanks to all contributors! ❤️
