@@ -8,7 +8,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-// GenericSetReadyCondition is a function type that sets the Ready condition on a controller resource.
+// SetReadyCondition is a function type that sets the Ready condition on a controller resource.
 // It uses reflection and assumes that the controller resource has a standard status field with conditions.
 // Your api MUST have a field like so:
 //
@@ -61,6 +61,8 @@ func SetReadyCondition[ControllerResourceType client.Object](_ Reconciler[Contro
 // PatchCustomResourceStatus patches the status subresource of the custom resource stored in the context.
 // This function assumes that the context contains a ReconcilerContextData with the CustomResource field populated.
 // The step "FindControllerResource" does exactly that, populating the context.
+//
+// It also sets the updated custom resource back into the context after patching.
 func PatchCustomResourceStatus[CustomResourceType client.Object](ctx Context[CustomResourceType], reconciler Reconciler[CustomResourceType]) error {
 	// Get the custom resource from the context
 	cleanObject := ctx.GetCleanCustomResource()

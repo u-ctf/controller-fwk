@@ -64,22 +64,24 @@ func NewResolveDependencyStep[
 					return ResultSuccess()
 				}
 
-				// Setup watch if we can
-				reconcilerWithWatcher, ok := reconciler.(ReconcilerWithWatcher[ControllerResourceType])
-				if ok {
-					result := SetupWatch(reconcilerWithWatcher, dep, true)(ctx, req)
-					if result.ShouldReturn() {
-						return result.FromSubStep()
+				if dependency.ShouldAddManagedByAnnotation() {
+					// Setup watch if we can
+					reconcilerWithWatcher, ok := reconciler.(ReconcilerWithWatcher[ControllerResourceType])
+					if ok {
+						result := SetupWatch(reconcilerWithWatcher, dep, true)(ctx, req)
+						if result.ShouldReturn() {
+							return result.FromSubStep()
+						}
 					}
-				}
 
-				changed, err := AddManagedBy(dep, cr, reconciler.Scheme())
-				if err != nil {
-					return ResultInError(err)
-				}
-				if changed {
-					if err := reconciler.Patch(ctx, dep, client.MergeFrom(cleanDep)); err != nil {
+					changed, err := AddManagedBy(dep, cr, reconciler.Scheme())
+					if err != nil {
 						return ResultInError(err)
+					}
+					if changed {
+						if err := reconciler.Patch(ctx, dep, client.MergeFrom(cleanDep)); err != nil {
+							return ResultInError(err)
+						}
 					}
 				}
 

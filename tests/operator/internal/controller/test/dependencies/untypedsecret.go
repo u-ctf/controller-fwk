@@ -23,6 +23,7 @@ func NewUntypedSecretDependency(ctx testv1.UntypedTestContext, reconciler ctrlfw
 			return isUntypedSecretReady(secret)
 		}).
 		WithWaitForReady(true).
+		WithAddManagedByAnnotation(true).
 		WithAfterReconcile(func(ctx testv1.UntypedTestContext, resource *unstructured.Unstructured) error {
 			if resource.GetName() == "" {
 				reconciler.Eventf(cr, "Warning", "SecretNotFound", "The required Secret was not found")
