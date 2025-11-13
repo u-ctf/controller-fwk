@@ -1,6 +1,6 @@
 # Changelog
 
-## [0.1.0](https://github.com/u-ctf/controller-fwk/releases/tag/0.1.0) - 2025-11-12
+## [0.1.0](https://github.com/u-ctf/controller-fwk/releases/tag/0.1.0) - 2025-11-13
 
 ### ❤️ Thanks to all contributors! ❤️
 
@@ -8,6 +8,7 @@
 
 ### 📈 Enhancement
 
+- chore: update godoc in most places [[#10](https://github.com/u-ctf/controller-fwk/pull/10)]
 - fix(context): export Data field [[#9](https://github.com/u-ctf/controller-fwk/pull/9)]
 - fix(sample-operator): change typing to use alias and reduce boilerplate [[#8](https://github.com/u-ctf/controller-fwk/pull/8)]
 - feat(context): update context to be more generic [[#7](https://github.com/u-ctf/controller-fwk/pull/7)]
@@ -15,6 +16,7 @@
 
 ### Misc
 
+- chore: update godoc in most places ([91d112c](https://github.com/u-ctf/controller-fwk/commit/91d112c84b899dbb4d115860359a8704fa8bd552))
 - fix(context): export Data field ([05ddbfb](https://github.com/u-ctf/controller-fwk/commit/05ddbfb77a278e6a7b7349ee7b7c447505baabac))
 - fix(sample-operator): change typing to use alias and reduce boilerplate ([b063b6f](https://github.com/u-ctf/controller-fwk/commit/b063b6f24b1cd8bab5a7a9d5b49115992369d651))
 - feat(context): update context to be more generic ([c219fef](https://github.com/u-ctf/controller-fwk/commit/c219fefc362daba70f25fd52495edac2985dcec1))
