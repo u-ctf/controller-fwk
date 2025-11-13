@@ -14,16 +14,21 @@ import (
 )
 
 const (
-	AnnotationRef = "multi.ch/managed-by"
+	AnnotationRef = "dependencies.ctrlfwk.com/managed-by"
 )
 
+// ManagedBy represents a reference to a controller managing a resource and
+// it includes the controller's name, namespace, and GroupVersionKind (GVK)
+// information.
 type ManagedBy struct {
 	Name      string                  `json:"name"`
 	Namespace string                  `json:"namespace"`
 	GVK       schema.GroupVersionKind `json:"gvk"`
 }
 
-// GetManagedBy returns the list of resource that manages the current object
+// GetManagedBy retrieves the list of ManagedBy references from the specified
+// object's annotations. If the annotation is not present, it returns an empty
+// slice. If there is an error during unmarshalling, it returns the error.
 func GetManagedBy(obj client.Object) ([]ManagedBy, error) {
 	annotations := obj.GetAnnotations()
 	v, ok := annotations[AnnotationRef]
@@ -40,6 +45,10 @@ func GetManagedBy(obj client.Object) ([]ManagedBy, error) {
 	return out, err
 }
 
+// AddManagedBy adds a ManagedBy reference to the specified object's annotations.
+// It returns true if the annotation was added or modified, and false if the
+// reference already exists. If there is an error during the process, it returns
+// the error.
 func AddManagedBy(obj client.Object, controlledBy client.Object, scheme *runtime.Scheme) (changed bool, err error) {
 	gvk, err := apiutil.GVKForObject(controlledBy, scheme)
 	if err != nil {

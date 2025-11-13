@@ -15,6 +15,7 @@ type GenericDependency[CustomResourceType client.Object, ContextType Context[Cus
 	Set(obj client.Object)
 	Get() client.Object
 	ShouldWaitForReady() bool
+	ShouldAddManagedByAnnotation() bool
 	IsReady() bool
 	IsOptional() bool
 	Kind() string
@@ -32,6 +33,7 @@ type Dependency[CustomResourceType client.Object, ContextType Context[CustomReso
 	output         DependencyType
 	isOptional     bool
 	waitForReady   bool
+	addManagedBy   bool
 	name           string
 	namespace      string
 
@@ -109,4 +111,8 @@ func (c *Dependency[CustomResourceType, ContextType, DependencyType]) AfterRecon
 		}
 	}
 	return nil
+}
+
+func (c *Dependency[CustomResourceType, ContextType, DependencyType]) ShouldAddManagedByAnnotation() bool {
+	return c.addManagedBy
 }

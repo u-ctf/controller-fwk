@@ -1,5 +1,5 @@
 package ctrlfwk
 
 const (
-	FinalizerDependenciesManagedBy = "controller-fwk.uctf.io/cleanup-dependencies-managed-by"
+	FinalizerDependenciesManagedBy = "dependencies.ctrlfwk.com/cleanup-dependencies-managed-by"
 )

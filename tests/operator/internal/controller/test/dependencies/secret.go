@@ -22,6 +22,7 @@ func NewSecretDependency(ctx testv1.TestContext, reconciler ctrlfwk.ReconcilerWi
 			return isSecretReady(secret)
 		}).
 		WithWaitForReady(true).
+		WithAddManagedByAnnotation(true).
 		WithAfterReconcile(func(ctx testv1.TestContext, resource *corev1.Secret) error {
 			if resource.Name == "" {
 				reconciler.Eventf(cr, "Warning", "SecretNotFound", "The required Secret was not found")
