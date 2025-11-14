@@ -20,6 +20,7 @@ func NewUntypedConfigMapResource(ctx testv1.UntypedTestContext, reconciler ctrlf
 	cr := ctx.GetCustomResource()
 
 	return ctrlfwk.NewUntypedResourceBuilder(ctx, schema.GroupVersionKind{Group: "", Version: "v1", Kind: "ConfigMap"}).
+		WithCanBePaused(true).
 		WithSkipAndDeleteOnCondition(func() bool {
 			return !cr.Spec.ConfigMap.Enabled
 		}).

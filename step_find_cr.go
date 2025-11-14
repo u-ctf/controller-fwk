@@ -31,6 +31,15 @@ func NewFindControllerCustomResourceStep[
 				return ResultEarlyReturn()
 			}
 
+			// Check labels for pause
+			labels := cr.GetLabels()
+			if labels != nil {
+				if _, ok := labels[LabelReconciliationPaused]; ok {
+					logger.Info("Reconciliation is paused for this resource, skipping further steps")
+					return ResultEarlyReturn()
+				}
+			}
+
 			// Set the controller resource in the reconciler
 			ctx.SetCustomResource(cr)
 

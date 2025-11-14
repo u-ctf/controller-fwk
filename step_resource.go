@@ -47,6 +47,16 @@ func NewReconcileResourceStep[
 					return result.FromSubStep()
 				}
 
+				if resource.CanBePaused() {
+					labels := cr.GetLabels()
+					if labels != nil {
+						if _, ok := labels[LabelReconciliationPaused]; ok {
+							logger.Info("Reconciliation is paused for this resource, skipping reconciliation step")
+							return ResultSuccess()
+						}
+					}
+				}
+
 				if IsFinalizing(cr) {
 					if err := reconciler.Delete(ctx, desired); client.IgnoreNotFound(err) != nil {
 						return ResultInError(errors.Wrap(err, "failed to delete resource"))

@@ -96,7 +96,13 @@ func (reconciler *TestReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 // SetupWithManager sets up the controller with the Manager.
 func (reconciler *TestReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	ctrler, err := instrument.InstrumentedControllerManagedBy(reconciler, mgr).
-		For(&testv1.Test{}, builder.WithPredicates(predicate.GenerationChangedPredicate{})).
+		For(&testv1.Test{}, builder.WithPredicates(
+			// Requires the CR to not be paused and to have a generation change
+			predicate.And(
+				ctrlfwk.NotPausedPredicate{},
+				predicate.GenerationChangedPredicate{},
+			),
+		)).
 		Named("test").
 		Build(reconciler)
 

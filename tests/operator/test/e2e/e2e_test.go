@@ -306,6 +306,14 @@ var _ = Describe("Manager", func() {
 		Context("Secret Dependency Tests (Untyped)", func() {
 			SecretDependencyManagementTests(getClient, ctx, getTestNamespace, CreateUntypedTestResource, "UntypedTest")
 		})
+
+		Context("Pause Tests", func() {
+			PauseTests(getClient, ctx, getTestNamespace, CreateTestResource, "Test")
+		})
+
+		Context("Pause Tests (Untyped)", func() {
+			PauseTests(getClient, ctx, getTestNamespace, CreateUntypedTestResource, "UntypedTest")
+		})
 	})
 })
 
