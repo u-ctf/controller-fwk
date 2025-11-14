@@ -5,8 +5,13 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/event"
 )
 
+// NotPausedPredicate is a predicate that filters out paused resources from reconciliation.
+// Resources with the ctrlfwk.com/pause label will not trigger reconciliation events.
 type NotPausedPredicate = TypedNotPausedPredicate[client.Object]
 
+// TypedNotPausedPredicate filters reconciliation events for resources marked as paused.
+// When applied to a controller, it prevents the controller from queuing reconciliation
+// requests for resources that have the pause label set.
 type TypedNotPausedPredicate[object client.Object] struct{}
 
 func (p TypedNotPausedPredicate[object]) Create(e event.TypedCreateEvent[object]) bool {

@@ -552,7 +552,7 @@ func (b *UntypedResourceBuilder[CustomResource, ContextType]) WithUserIdentifier
 	return b
 }
 
-// CanBePaused specifies whether this resource supports pausing reconciliation.
+// WithCanBePaused specifies whether this resource supports pausing reconciliation.
 //
 // When set to true, the resource will respect the paused state of the custom resource.
 // If the custom resource is marked as paused (e.g., via a label), reconciliation

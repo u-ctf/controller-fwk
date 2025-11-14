@@ -11,6 +11,7 @@ import (
 	"github.com/google/uuid"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	ctrlfwk "github.com/u-ctf/controller-fwk"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	testv1 "operator/api/v1"
@@ -21,7 +22,7 @@ import (
 
 const (
 	// PauseLabelKey is the label used to pause reconciliation
-	PauseLabelKey = "ctrlfwk.com/pause"
+	PauseLabelKey = ctrlfwk.LabelReconciliationPaused
 )
 
 // PauseTests adds tests for pausing reconciliation on resources that support it.
@@ -369,7 +370,7 @@ func PauseTests(getClient func() client.Client, ctx context.Context, getTestName
 			}, 5*time.Second, time.Second).Should(Succeed())
 		})
 
-		It("should not be affected by pause when label is set to empty string", func() {
+		It("should pause reconciliation when label is set to empty string", func() {
 			By("creating Test resource with empty pause label value")
 			testResource = resourceFactory("test-empty-pause-"+uuid.NewString()[:8], getTestNamespace().Name)
 
