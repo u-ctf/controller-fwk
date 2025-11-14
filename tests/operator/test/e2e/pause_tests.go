@@ -55,6 +55,17 @@ func PauseTests(getClient func() client.Client, ctx context.Context, getTestName
 		})
 
 		AfterEach(func() {
+			// Cleanup labels to avoid interference with deletion
+			if testResource != nil {
+				labels := testResource.GetLabels()
+				if labels != nil {
+					delete(labels, PauseLabelKey)
+					testResource.SetLabels(labels)
+					err := getClient().Update(ctx, testResource)
+					Expect(err).NotTo(HaveOccurred(), "Cleanup pause label from test resource")
+				}
+			}
+
 			// Cleanup test resource if it exists
 			if testResource != nil && testResource.GetName() != "" {
 				err := getClient().Delete(ctx, testResource)
