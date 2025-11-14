@@ -20,6 +20,7 @@ type GenericResource[CustomResource client.Object, ContextType Context[CustomRes
 	Kind() string
 	IsReady(obj client.Object) bool
 	RequiresManualDeletion(obj client.Object) bool
+	CanBePaused() bool
 
 	// Hooks
 	BeforeReconcile(ctx ContextType) error
@@ -41,6 +42,7 @@ type Resource[CustomResource client.Object, ContextType Context[CustomResource],
 	shouldDeleteF     func() bool
 	requiresDeletionF func(obj ResourceType) bool
 	output            ResourceType
+	canBePausedF      func() bool
 
 	// Hooks
 	beforeReconcileF func(ctx ContextType) error
@@ -210,4 +212,11 @@ func (c *Resource[CustomResource, ContextType, ResourceType]) GetMutator(obj cli
 		}
 		return nil
 	}
+}
+
+func (c *Resource[CustomResource, ContextType, ResourceType]) CanBePaused() bool {
+	if c.canBePausedF != nil {
+		return c.canBePausedF()
+	}
+	return false
 }

@@ -20,6 +20,7 @@ func NewConfigMapResource(ctx testv1.TestContext, reconciler ctrlfwk.ReconcilerW
 	cr := ctx.GetCustomResource()
 
 	return ctrlfwk.NewResourceBuilder(ctx, &corev1.ConfigMap{}).
+		WithCanBePaused(true).
 		WithSkipAndDeleteOnCondition(func() bool {
 			return !cr.Spec.ConfigMap.Enabled
 		}).
