@@ -551,3 +551,45 @@ func (b *UntypedResourceBuilder[CustomResource, ContextType]) WithUserIdentifier
 	b.inner = b.inner.WithUserIdentifier(identifier)
 	return b
 }
+
+// WithCanBePaused specifies whether this resource supports pausing reconciliation.
+//
+// When set to true, the resource will respect the paused state of the custom resource.
+// If the custom resource is marked as paused (e.g., via a label), reconciliation
+// for this resource will be skipped until the pause is lifted.
+//
+// This is useful for scenarios where you want to temporarily halt changes to
+// certain resources without deleting them or affecting other parts of the system.
+//
+// Common use cases:
+//   - Temporarily halting updates during maintenance windows
+//   - Pausing non-critical resources while troubleshooting issues
+//   - Allowing manual intervention before resuming automated management
+//
+// Example:
+//
+//	.WithCanBePaused(true) // Enable pausing for this resource
+func (b *UntypedResourceBuilder[CustomResource, ContextType]) WithCanBePaused(canBePaused bool) *UntypedResourceBuilder[CustomResource, ContextType] {
+	b.inner = b.inner.WithCanBePaused(canBePaused)
+	return b
+}
+
+// WithCanBePausedFunc specifies a function to determine if this resource supports pausing reconciliation.
+//
+// The provided function is called during reconciliation to check if the resource
+// should respect the paused state of the custom resource. If it returns true,
+// reconciliation for this resource will be skipped when the custom resource is paused.
+//
+// This allows for dynamic control over which resources can be paused based on
+// the current state or configuration of the custom resource.
+//
+// Example:
+//
+//	.WithCanBePausedFunc(func() bool {
+//	    // Custom logic to determine if the resource can be paused
+//	    return someCondition
+//	})
+func (b *UntypedResourceBuilder[CustomResource, ContextType]) WithCanBePausedFunc(f func() bool) *UntypedResourceBuilder[CustomResource, ContextType] {
+	b.inner = b.inner.WithCanBePausedFunc(f)
+	return b
+}
