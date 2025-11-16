@@ -379,7 +379,7 @@ func (b *UntypedResourceBuilder[CustomResource, ContextType]) WithKeyFunc(f func
 //		obj.SetNamespace(cr.Namespace)
 //
 //		// Configure ServiceMonitor spec using unstructured helpers
-//		err := unstructured.SetNestedMap(obj.Object, map[string]interface{}{
+//		err := unstructured.SetNestedMap(obj.Object, map[string]any{
 //			"app": cr.Name,
 //		}, "spec", "selector", "matchLabels")
 //		if err != nil {
@@ -387,8 +387,8 @@ func (b *UntypedResourceBuilder[CustomResource, ContextType]) WithKeyFunc(f func
 //		}
 //
 //		// Set endpoint configuration
-//		endpoints := []interface{}{
-//			map[string]interface{}{
+//		endpoints := []any{
+//			map[string]any{
 //				"port": "metrics",
 //				"path": "/metrics",
 //			},

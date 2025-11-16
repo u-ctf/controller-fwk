@@ -230,8 +230,8 @@ Example test structure:
 func TestNewResource(t *testing.T) {
     tests := []struct {
         name     string
-        input    interface{}
-        expected interface{}
+        input    any
+        expected any
         wantErr  bool
     }{
         // Test cases

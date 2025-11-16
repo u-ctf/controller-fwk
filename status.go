@@ -1,6 +1,7 @@
 package ctrlfwk
 
 import (
+	"fmt"
 	"reflect"
 
 	"k8s.io/apimachinery/pkg/api/meta"
@@ -28,12 +29,12 @@ func SetReadyCondition[ControllerResourceType client.Object](_ Reconciler[Contro
 
 		statusField := objValue.FieldByName("Status")
 		if !statusField.IsValid() {
-			return false, nil // No status field found
+			return false, fmt.Errorf("status field not found on controller resource")
 		}
 
 		conditionsField := statusField.FieldByName("Conditions")
 		if !conditionsField.IsValid() || conditionsField.Kind() != reflect.Slice {
-			return false, nil // No conditions field found
+			return false, fmt.Errorf("conditions field not found or is not a slice on status")
 		}
 
 		conditions := conditionsField.Interface().([]metav1.Condition)
