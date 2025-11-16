@@ -45,7 +45,7 @@ func GetContract[K any](object *unstructured.Unstructured, path ...string) (*K, 
 var metaTime = reflect.TypeOf(metav1.Time{})
 
 func DecodeMetaTime() mapstructure.DecodeHookFuncType {
-	return func(from, to reflect.Type, i interface{}) (interface{}, error) {
+	return func(from, to reflect.Type, i any) (any, error) {
 		if to == metaTime {
 			if t, ok := i.(string); ok {
 				realTime, err := time.Parse(time.RFC3339, t)
