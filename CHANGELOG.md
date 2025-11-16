@@ -1,6 +1,6 @@
 # Changelog
 
-## [1.1.0](https://github.com/u-ctf/controller-fwk/releases/tag/v1.1.0) - 2025-11-15
+## [1.1.0](https://github.com/u-ctf/controller-fwk/releases/tag/v1.1.0) - 2025-11-16
 
 ### ❤️ Thanks to all contributors! ❤️
 
