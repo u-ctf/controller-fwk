@@ -1,5 +1,34 @@
 # Changelog
 
+## [1.1.0-rc.1](https://github.com/u-ctf/controller-fwk/compare/v1.0.0-rc.1...v1.1.0-rc.1) (2025-11-17)
+
+
+### Features
+
+* **concurrency:** add context, fix builders and add more tests ([fc00919](https://github.com/u-ctf/controller-fwk/commit/fc0091978a14f28d572afaacc104618ab2d6ebbf))
+* **context:** update context to be more generic ([352cff0](https://github.com/u-ctf/controller-fwk/commit/352cff053eb29bef43ab7603284bdbbc4ce37ec8))
+* **controller:** add pausing feature ([208369e](https://github.com/u-ctf/controller-fwk/commit/208369e347e3013a6742dbc464edb7b979b8fae2))
+* **finalizer:** add first try at finalizer ([d5f085b](https://github.com/u-ctf/controller-fwk/commit/d5f085bb14e8b3f7dd6173a6c8618b87f39ba9d1))
+* first version ([fc6a527](https://github.com/u-ctf/controller-fwk/commit/fc6a527ea637c37c01b714d826774476f57afa7c))
+* **instrumentation:** rename tracing to instrumentation and improve the design ([202d365](https://github.com/u-ctf/controller-fwk/commit/202d36594748a5ef3105ec369e8358e9c1d21944))
+* **tests:** add more e2e tests ([6477a60](https://github.com/u-ctf/controller-fwk/commit/6477a60dd9822a7938e2dd0b3630df9ca6a4d2d5))
+* **v2:** add builder pattern and migrate to it in tests ([dd6b0e7](https://github.com/u-ctf/controller-fwk/commit/dd6b0e7a10e8eebe6ac889ddb9d1025879989861))
+* **v2:** modify naming and some inner workings for simplicity ([400c2dd](https://github.com/u-ctf/controller-fwk/commit/400c2dd97a196db00aeaa07caf370d6772512bcd))
+* **v2:** working towards v2 ([8c42546](https://github.com/u-ctf/controller-fwk/commit/8c4254663bb175de80af6a4eebdda6599faafaef))
+
+
+### Bug Fixes
+
+* **context:** export Data field ([e644b68](https://github.com/u-ctf/controller-fwk/commit/e644b689dbd5d054126e00a62a9055d552eb9c42))
+* **e2e:** create ns using kubectl instead of clientset used for the operator ([534c3a6](https://github.com/u-ctf/controller-fwk/commit/534c3a655b5494a890673303c6131afc47b96fcb))
+* **e2e:** remove systemd from e2e image ([3acf50e](https://github.com/u-ctf/controller-fwk/commit/3acf50efe3db9984aabb677ef35ae0448cc1aef7))
+* **e2e:** use patch instead of update ([bfc4c38](https://github.com/u-ctf/controller-fwk/commit/bfc4c38d4b58d2cc9083cfaa669d47ac5f62ebb4))
+* **mgr:** don't require mgr to be exposed by default, it's only needed when autowatch is set ([5787340](https://github.com/u-ctf/controller-fwk/commit/5787340bb4613efaecdf8f97b65a2c087e3c7638))
+* **release:** change settings and remove 0.1.0 ([a38692c](https://github.com/u-ctf/controller-fwk/commit/a38692cc9a0530bfca5c94e7b18e677d0e14273d))
+* **sample-operator:** change typing to use alias and reduce boilerplate ([7a5ba48](https://github.com/u-ctf/controller-fwk/commit/7a5ba483dbd89e7af150c3cc2ce08f5a5267a16f))
+* **tests:** cleanup labels to avoid ns timeout ([3bc1847](https://github.com/u-ctf/controller-fwk/commit/3bc18476a425b37c15abb8c29c98c7ff2a288fb2))
+* **tests:** implement fixes by copilot ([eb637b5](https://github.com/u-ctf/controller-fwk/commit/eb637b59f62f8739ff5c6c30855893f8cb99f012))
+
 ## [1.0.0](https://github.com/u-ctf/controller-fwk/releases/tag/v1.0.0) - 2025-11-13
 
 ### ❤️ Thanks to all contributors! ❤️
