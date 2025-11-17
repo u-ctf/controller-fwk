@@ -1,5 +1,15 @@
 # Changelog
 
+## [1.1.0](https://github.com/u-ctf/controller-fwk/releases/tag/v1.1.0) - 2025-11-17
+
+### ❤️ Thanks to all contributors! ❤️
+
+@yyewolf
+
+### 📈 Enhancement
+
+- feat(controller): add pausing feature [[#11](https://github.com/u-ctf/controller-fwk/pull/11)]
+
 ## [1.0.0](https://github.com/u-ctf/controller-fwk/releases/tag/v1.0.0) - 2025-11-13
 
 ### ❤️ Thanks to all contributors! ❤️
