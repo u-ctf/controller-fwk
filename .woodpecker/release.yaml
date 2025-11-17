@@ -4,11 +4,11 @@ when:
 
 steps:
 - name: release-helper
-  image: registry.yewolf.fr/wrapper/wrap/mirror.gcr.io/woodpeckerci/plugin-ready-release-go/3.4.0/with/ghcr.io/yyewolf/woodpecker-plugins/github-token-wrapper/latest:latest
+  image: registry.yewolf.fr/wrapper/wrap/ghcr.io/yyewolf/woodpecker-plugins/release-please/latest/with/ghcr.io/yyewolf/woodpecker-plugins/github-token-wrapper/latest:latest
   settings:
-    release_branch: ${CI_REPO_DEFAULT_BRANCH}
-    forge_type: github
-    git_email: robertowo@yewolf.fr
+    repo_url: ${CI_REPO_URL}
+    release_type: go
+    target_branch: main
     mtls_service_url: https://github-token-svc:8443/token
     mtls_ca_cert:
       from_secret: GITHUB_MTLS_CA_CERT
@@ -16,6 +16,7 @@ steps:
       from_secret: GITHUB_MTLS_CLIENT_CERT
     mtls_client_key:
       from_secret: GITHUB_MTLS_CLIENT_KEY
+    output_to: PLUGIN_TOKEN
 
 services:
 - name: github-token-svc
