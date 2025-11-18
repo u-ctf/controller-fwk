@@ -412,5 +412,131 @@ func PauseTests(getClient func() client.Client, ctx context.Context, getTestName
 				g.Expect(client.IgnoreNotFound(err)).To(Succeed(), "ConfigMap should not exist with empty pause value")
 			}, 10*time.Second, time.Second).Should(Succeed())
 		})
+
+		It("should not update ConfigMap when it has pause label", func() {
+			By("creating Test resource without pause label")
+			testResource = resourceFactory("test-cm-pause-"+uuid.NewString()[:8], getTestNamespace().Name)
+
+			spec := GenericTestSpec{
+				Dependencies: testv1.TestDependencies{
+					Secret: testv1.SecretDependency{
+						Name:      testSecret.Name,
+						Namespace: testSecret.Namespace,
+					},
+				},
+				ConfigMap: testv1.ConfigMapSpec{
+					Enabled: true,
+					Name:    originalConfigMapName,
+					Data:    originalConfigMapData,
+				},
+			}
+			testResource.SetSpec(spec)
+
+			err := getClient().Create(ctx, testResource)
+			Expect(err).NotTo(HaveOccurred(), "Create the Test resource")
+
+			By("verifying ConfigMap is created initially")
+			cm := &corev1.ConfigMap{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      originalConfigMapName,
+					Namespace: testResource.GetNamespace(),
+				},
+			}
+
+			Eventually(func(g Gomega) {
+				err := getClient().Get(ctx, client.ObjectKeyFromObject(cm), cm)
+				g.Expect(err).NotTo(HaveOccurred(), "ConfigMap should be created")
+				g.Expect(cm.Data).To(Equal(originalConfigMapData), "ConfigMap should have original data")
+			}, 30*time.Second, 2*time.Second).Should(Succeed())
+
+			By("adding pause label to the ConfigMap")
+			err = getClient().Get(ctx, client.ObjectKeyFromObject(cm), cm)
+			Expect(err).NotTo(HaveOccurred(), "Get ConfigMap")
+
+			labels := cm.GetLabels()
+			if labels == nil {
+				labels = make(map[string]string)
+			}
+			labels[PauseLabelKey] = "configmap-pause"
+			cm.SetLabels(labels)
+
+			err = getClient().Update(ctx, cm)
+			Expect(err).NotTo(HaveOccurred(), "Update ConfigMap to add pause label")
+
+			By("updating the CR spec to trigger ConfigMap changes")
+			newConfigMapData := map[string]string{
+				"key1":     "updated-value1",
+				"key2":     "updated-value2",
+				"key3":     "new-value3",
+				"modified": "after-pause",
+			}
+
+			err = getClient().Get(ctx, client.ObjectKeyFromObject(testResource), testResource)
+			Expect(err).NotTo(HaveOccurred(), "Get Test resource")
+
+			spec = testResource.GetSpec()
+			spec.ConfigMap.Data = newConfigMapData
+			testResource.SetSpec(spec)
+
+			err = getClient().Update(ctx, testResource)
+			Expect(err).NotTo(HaveOccurred(), "Update Test resource spec")
+
+			By("verifying ConfigMap data remains unchanged despite CR updates")
+			Consistently(func(g Gomega) {
+				err := getClient().Get(ctx, client.ObjectKeyFromObject(cm), cm)
+				g.Expect(err).NotTo(HaveOccurred(), "ConfigMap should still exist")
+				g.Expect(cm.Data).To(Equal(originalConfigMapData), "ConfigMap data should remain unchanged due to pause annotation")
+				g.Expect(cm.Data).NotTo(Equal(newConfigMapData), "ConfigMap should not have new data while paused")
+
+				// Verify the pause label is still present
+				labels := cm.GetLabels()
+				g.Expect(labels).NotTo(BeNil(), "ConfigMap should have labels")
+				g.Expect(labels[PauseLabelKey]).To(Equal("configmap-pause"), "Pause label should be preserved")
+			}, 15*time.Second, 2*time.Second).Should(Succeed())
+
+			By("removing pause label from ConfigMap to allow updates")
+			err = getClient().Get(ctx, client.ObjectKeyFromObject(cm), cm)
+			Expect(err).NotTo(HaveOccurred(), "Get ConfigMap")
+
+			labels = cm.GetLabels()
+			delete(labels, PauseLabelKey)
+			cm.SetLabels(labels)
+
+			err = getClient().Update(ctx, cm)
+			Expect(err).NotTo(HaveOccurred(), "Remove pause label from ConfigMap")
+
+			By("triggering reconciliation by updating CR generation")
+			err = getClient().Get(ctx, client.ObjectKeyFromObject(testResource), testResource)
+			Expect(err).NotTo(HaveOccurred(), "Get Test resource")
+
+			spec = testResource.GetSpec()
+			if spec.ConfigMap.Data == nil {
+				spec.ConfigMap.Data = make(map[string]string)
+			}
+			spec.ConfigMap.Data["resume-trigger"] = "configmap-unpaused"
+			testResource.SetSpec(spec)
+
+			err = getClient().Update(ctx, testResource)
+			Expect(err).NotTo(HaveOccurred(), "Update Test resource to trigger reconciliation")
+
+			By("verifying ConfigMap is updated after removing pause label")
+			expectedData := make(map[string]string)
+			for k, v := range newConfigMapData {
+				expectedData[k] = v
+			}
+			expectedData["resume-trigger"] = "configmap-unpaused"
+
+			Eventually(func(g Gomega) {
+				err := getClient().Get(ctx, client.ObjectKeyFromObject(cm), cm)
+				g.Expect(err).NotTo(HaveOccurred(), "ConfigMap should exist")
+				g.Expect(cm.Data).To(Equal(expectedData), "ConfigMap should be updated after removing pause label")
+
+				// Verify pause label is no longer present
+				labels := cm.GetLabels()
+				if labels != nil {
+					g.Expect(labels[PauseLabelKey]).To(BeEmpty(), "Pause label should be removed")
+				}
+			}, 30*time.Second, 2*time.Second).Should(Succeed())
+		})
 	})
 }

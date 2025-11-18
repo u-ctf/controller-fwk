@@ -47,16 +47,6 @@ func NewReconcileResourceStep[
 					return result.FromSubStep()
 				}
 
-				if resource.CanBePaused() {
-					labels := cr.GetLabels()
-					if labels != nil {
-						if _, ok := labels[LabelReconciliationPaused]; ok {
-							logger.Info("Reconciliation is paused for this resource, skipping reconciliation step")
-							return ResultSuccess()
-						}
-					}
-				}
-
 				if IsFinalizing(cr) {
 					if err := reconciler.Delete(ctx, desired); client.IgnoreNotFound(err) != nil {
 						return ResultInError(errors.Wrap(err, "failed to delete resource"))
@@ -78,7 +68,25 @@ func NewReconcileResourceStep[
 					}
 				}
 
-				patchResult, err := controllerutil.CreateOrPatch(ctx, reconciler, desired, resource.GetMutator(desired))
+				var mutator controllerutil.MutateFn = nil
+				if resource.CanBePaused() {
+					wrappedFunc := resource.GetMutator(desired)
+					mutator = func() error {
+						labels := desired.GetLabels()
+						if labels != nil {
+							if _, ok := labels[LabelReconciliationPaused]; ok {
+								logger.Info("Reconciliation is paused for this resource, skipping mutation")
+								return nil
+							}
+						}
+
+						return wrappedFunc()
+					}
+				} else {
+					mutator = resource.GetMutator(desired)
+				}
+
+				patchResult, err := controllerutil.CreateOrPatch(ctx, reconciler, desired, mutator)
 				if err != nil {
 					return ResultInError(errors.Wrap(err, "failed to create or patch resource"))
 				}
