@@ -172,7 +172,8 @@ func main() {
 		LeaderElection:         enableLeaderElection,
 		LeaderElectionID:       "794b1d2d.example.com",
 		Controller: config.Controller{
-			UsePriorityQueue: ptr.To(true),
+			UsePriorityQueue:        ptr.To(true),
+			MaxConcurrentReconciles: 10,
 		},
 		// LeaderElectionReleaseOnCancel defines if the leader should step down voluntarily
 		// when the Manager ends. This requires the binary to immediately end when the
