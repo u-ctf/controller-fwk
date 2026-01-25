@@ -32,6 +32,8 @@ func NewAddFinalizerStep[
 				if err != nil {
 					return ResultInError(err)
 				}
+
+				ctx.SetCustomResource(cr)
 			}
 
 			return ResultSuccess()

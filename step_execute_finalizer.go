@@ -48,6 +48,8 @@ func NewExecuteFinalizerStep[
 						return ResultInError(err)
 					}
 				}
+
+				ctx.SetCustomResource(cr)
 			}
 
 			return ResultSuccess()
