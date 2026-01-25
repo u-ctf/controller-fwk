@@ -59,6 +59,7 @@ var _ ctrlfwk.ReconcilerWithWatcher[*testv1.Test] = &TestReconciler{}
 
 func (reconciler *TestReconciler) GetDependencies(ctx testv1.TestContext, req ctrl.Request) (dependencies []testv1.TestDependency, err error) {
 	return []testv1.TestDependency{
+		test_dependencies.NewOptionalSecretDependency(ctx, reconciler),
 		test_dependencies.NewSecretDependency(ctx, reconciler),
 	}, nil
 }

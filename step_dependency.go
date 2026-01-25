@@ -40,7 +40,7 @@ func NewResolveDependencyStep[
 						return ResultInError(errors.Wrap(err, "failed to get dependency resource"))
 					}
 
-					if IsFinalizing(cr) {
+					if IsFinalizing(cr) || dependency.IsOptional() {
 						return ResultSuccess()
 					}
 
