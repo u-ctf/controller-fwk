@@ -7,6 +7,7 @@ import (
 	"github.com/go-logr/logr"
 	"github.com/u-ctf/controller-fwk/mocks"
 	"go.uber.org/mock/gomock"
+	"k8s.io/client-go/rest"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -21,6 +22,17 @@ import (
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+func newTestManager(t *testing.T) manager.Manager {
+	t.Helper()
+
+	mgr, err := ctrl.NewManager(&rest.Config{Host: "https://127.0.0.1:65535"}, ctrl.Options{})
+	if err != nil {
+		t.Fatalf("unable to create manager: %v", err)
+	}
+
+	return mgr
+}
+
 func TestBuilder_ShouldReplaceController(t *testing.T) {
 	ctrlr := gomock.NewController(t)
 	defer ctrlr.Finish()
@@ -30,10 +42,7 @@ func TestBuilder_ShouldReplaceController(t *testing.T) {
 	mockController.EXPECT().Watch(gomock.Any()).Return(nil).AnyTimes()
 	mockController.EXPECT().GetLogger().Return(logr.Discard()).AnyTimes()
 
-	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{})
-	if err != nil {
-		t.Fatalf("unable to create manager: %v", err)
-	}
+	mgr := newTestManager(t)
 
 	blder := builder.TypedControllerManagedBy[reconcile.Request](mgr).
 		Named("oui").
@@ -47,6 +56,7 @@ func TestBuilder_ShouldReplaceController(t *testing.T) {
 
 	forceSetNewController(blder, fn)
 
+	var err error
 	_, err = blder.Build(mocks.NewMockTypedReconciler[reconcile.Request](ctrlr))
 	if err != nil {
 		t.Fatalf("unexpected error from Build: %v", err)
@@ -65,10 +75,7 @@ func TestBuilder_ShouldReplaceWatches(t *testing.T) {
 	mockController.EXPECT().Start(gomock.Any()).Return(nil).AnyTimes()
 	mockController.EXPECT().GetLogger().Return(logr.Discard()).AnyTimes()
 
-	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{})
-	if err != nil {
-		t.Fatalf("unable to create manager: %v", err)
-	}
+	mgr := newTestManager(t)
 
 	mockedInstrumenter := mocks.NewMockInstrumenter(ctrlr)
 	mockedInstrumenter.EXPECT().GetContextForEvent(gomock.Any()).Return(nil).AnyTimes()
@@ -124,6 +131,7 @@ func TestBuilder_ShouldReplaceWatches(t *testing.T) {
 		}).Return(nil),
 	)
 
+	var err error
 	_, err = blder.Build(mocks.NewMockTypedReconciler[reconcile.Request](ctrlr))
 	if err != nil {
 		t.Fatalf("unexpected error from Build: %v", err)

@@ -31,20 +31,32 @@ steps:
   - dockerd --ip6tables=false &
   - timeout 120s bash -c 'until docker info >/dev/null 2>&1; do sleep 1; done'
 
-  - mkdir coverage
+  - mkdir -p coverage/unit-coverage-data
+  - mkdir -p coverage/merged-coverage-data
+
+  # Run the new instrument queue regression/parity tests and collect unit coverage data
+  - go test -v ./... -coverprofile=coverage/unit-coverage-data/unit_coverage.out -covermode=atomic -coverpkg=github.com/u-ctf/controller-fwk/...
+
   - cd tests/operator
   - go mod tidy
   - make test-e2e-coverage
 
-  # Filter out coverage.out to contain the first line and lines with github.com/u-ctf/controller-fwk
+  - cd ../..
+
+  # Merge e2e and unit test coverage data, then generate a single coverage profile
+  - test -d coverage/unit-coverage-data && test "$(ls -A coverage/unit-coverage-data | wc -l)" -gt 0
+  - go tool covdata merge -i=tests/operator/coverage-data,coverage/unit-coverage-data -o coverage/merged-coverage-data
+  - go tool covdata textfmt -i=coverage/merged-coverage-data -o coverage/merged_coverage.out
+
+  # Filter merged coverage to contain the first line and lines with github.com/u-ctf/controller-fwk
   - |
-    cat coverage.out | head -n 1 > library_coverage.out
-    grep "github.com/u-ctf/controller-fwk" coverage.out >> library_coverage.out
+    cat coverage/merged_coverage.out | head -n 1 > coverage/library_coverage.out
+    grep "github.com/u-ctf/controller-fwk" coverage/merged_coverage.out >> coverage/library_coverage.out
 
-    go tool cover -func=library_coverage.out -o ../../coverage/coverage.txt
-    go tool cover -html=library_coverage.out -o ../../coverage/coverage.html
+    go tool cover -func=coverage/library_coverage.out -o coverage/coverage.txt
+    go tool cover -html=coverage/library_coverage.out -o coverage/coverage.html
 
-    PERCENTAGE=$(awk '/^total:/ {gsub(/%/, "", $3); printf $3}' ../../coverage/coverage.txt)
+    PERCENTAGE=$(awk '/^total:/ {gsub(/%/, "", $3); printf $3}' coverage/coverage.txt)
     COLOR="red"
     if [ "$(echo "$PERCENTAGE >= 90" | bc -l)" -eq 1 ]; then
       COLOR="green"
@@ -53,7 +65,7 @@ steps:
     elif [ "$(echo "$PERCENTAGE >= 50" | bc -l)" -eq 1 ]; then
       COLOR="orange"
     fi
-    echo "{\"schemaVersion\": 1, \"label\": \"coverage\", \"message\": \"$${PERCENTAGE}%\", \"color\": \"$COLOR\"}" > ../../coverage/coverage_badge.json
+    echo "{\"schemaVersion\": 1, \"label\": \"coverage\", \"message\": \"$${PERCENTAGE}%\", \"color\": \"$COLOR\"}" > coverage/coverage_badge.json
   environment:
     CGO_ENABLED: 0
     GOOS: linux

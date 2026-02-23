@@ -85,7 +85,7 @@ func (t *instrumenter) GetContextForRequest(req reconcile.Request) (*context.Con
 		return &defaultContext, false
 	}
 
-	meta, ok := t.queue.GetMetaOf(req)
+	meta, ok := t.queue.getMetaOf(req)
 	if !ok {
 		return &defaultContext, false
 	}

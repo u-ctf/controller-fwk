@@ -52,7 +52,7 @@ func (q InstrumentedQueue[T]) WithContext(ctx *context.Context) *InstrumentedQue
 	}
 }
 
-func (q InstrumentedQueue[T]) GetMetaOf(item T) (*encapsulatedItem[T], bool) {
+func (q InstrumentedQueue[T]) getMetaOf(item T) (*encapsulatedItem[T], bool) {
 	val, ok := q.metamap[item]
 	if !ok {
 		return nil, false
@@ -83,12 +83,10 @@ func (q InstrumentedQueue[T]) Add(item T) {
 	weakPointerToItem := weak.Make(pointerToItem)
 	runtime.AddCleanup(pointerToItem, q.cleanupKey, item)
 
-	if !q.isInQueue(item) {
-		q.internalQueue.Add(pointerToItem)
-		q.metamap[item] = &encapsulatedItem[T]{
-			Context: q.currentContext,
-			Object:  weakPointerToItem,
-		}
+	q.internalQueue.Add(pointerToItem)
+	q.metamap[item] = &encapsulatedItem[T]{
+		Context: q.currentContext,
+		Object:  weakPointerToItem,
 	}
 }
 
@@ -100,12 +98,10 @@ func (q InstrumentedQueue[T]) AddAfter(item T, duration time.Duration) {
 	weakPointerToItem := weak.Make(pointerToItem)
 	runtime.AddCleanup(pointerToItem, q.cleanupKey, item)
 
-	if !q.isInQueue(item) {
-		q.internalQueue.AddAfter(pointerToItem, duration)
-		q.metamap[item] = &encapsulatedItem[T]{
-			Context: q.currentContext,
-			Object:  weakPointerToItem,
-		}
+	q.internalQueue.AddAfter(pointerToItem, duration)
+	q.metamap[item] = &encapsulatedItem[T]{
+		Context: q.currentContext,
+		Object:  weakPointerToItem,
 	}
 }
 
@@ -117,12 +113,10 @@ func (q InstrumentedQueue[T]) AddRateLimited(item T) {
 	weakPointerToItem := weak.Make(pointerToItem)
 	runtime.AddCleanup(pointerToItem, q.cleanupKey, item)
 
-	if !q.isInQueue(item) {
-		q.internalQueue.AddRateLimited(pointerToItem)
-		q.metamap[item] = &encapsulatedItem[T]{
-			Context: q.currentContext,
-			Object:  weakPointerToItem,
-		}
+	q.internalQueue.AddRateLimited(pointerToItem)
+	q.metamap[item] = &encapsulatedItem[T]{
+		Context: q.currentContext,
+		Object:  weakPointerToItem,
 	}
 }
 
@@ -199,19 +193,17 @@ func (q InstrumentedQueue[T]) AddWithOpts(o priorityqueue.AddOpts, Items ...T) {
 			weakPointerToItem := weak.Make(pointerToItem)
 			runtime.AddCleanup(pointerToItem, q.cleanupKey, item)
 
-			if !q.isInQueue(item) {
-				if o.After > 0 {
-					pq.AddAfter(pointerToItem, o.After)
-				} else if o.RateLimited {
-					pq.AddRateLimited(pointerToItem)
-				} else {
-					pq.Add(pointerToItem)
-				}
+			if o.After > 0 {
+				pq.AddAfter(pointerToItem, o.After)
+			} else if o.RateLimited {
+				pq.AddRateLimited(pointerToItem)
+			} else {
+				pq.Add(pointerToItem)
+			}
 
-				q.metamap[item] = &encapsulatedItem[T]{
-					Context: q.currentContext,
-					Object:  weakPointerToItem,
-				}
+			q.metamap[item] = &encapsulatedItem[T]{
+				Context: q.currentContext,
+				Object:  weakPointerToItem,
 			}
 		}
 		return
