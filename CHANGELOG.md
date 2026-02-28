@@ -1,5 +1,15 @@
 # Changelog
 
+## [1.2.2](https://github.com/u-ctf/controller-fwk/releases/tag/v1.2.2) - 2026-02-28
+
+### ❤️ Thanks to all contributors! ❤️
+
+@yyewolf
+
+### Misc
+
+- chores(deps): update api apimachinery and client-go to v0.35.2 [[#27](https://github.com/u-ctf/controller-fwk/pull/27)]
+
 ## [1.2.1](https://github.com/u-ctf/controller-fwk/releases/tag/v1.2.1) - 2026-02-23
 
 ### ❤️ Thanks to all contributors! ❤️
