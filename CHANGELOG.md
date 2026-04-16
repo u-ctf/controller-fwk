@@ -1,5 +1,15 @@
 # Changelog
 
+## [1.2.3](https://github.com/u-ctf/controller-fwk/releases/tag/v1.2.3) - 2026-04-16
+
+### ❤️ Thanks to all contributors! ❤️
+
+@tomatobet
+
+### Misc
+
+- fix(instrument): ensure logger includes span context [[#30](https://github.com/u-ctf/controller-fwk/pull/30)]
+
 ## [1.2.2](https://github.com/u-ctf/controller-fwk/releases/tag/v1.2.2) - 2026-02-28
 
 ### ❤️ Thanks to all contributors! ❤️
