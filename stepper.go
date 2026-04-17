@@ -113,7 +113,6 @@ func (stepper *Stepper[K, C]) Execute(ctx C, req ctrl.Request) (ctrl.Result, err
 
 	startedAt := time.Now()
 
-	logger.Info("Inserting line return for lisibility\n\n")
 	logger.Info("Starting stepper execution")
 
 	for _, step := range stepper.steps {

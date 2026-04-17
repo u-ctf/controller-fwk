@@ -1,6 +1,7 @@
 package ctrlfwk
 
 import (
+	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -56,6 +57,26 @@ func NewDependencyBuilder[
 	return &DependencyBuilder[CustomResourceType, ContextType, DependencyType]{
 		dependency: &Dependency[CustomResourceType, ContextType, DependencyType]{},
 	}
+}
+
+// WithKey specifies a static NamespacedName for the dependency.
+//
+// This is useful when the dependency name and namespace are known at build time.
+// For dynamic naming based on runtime state, use WithKeyFunc instead.
+func (b *DependencyBuilder[CustomResourceType, ContextType, DependencyType]) WithKey(name types.NamespacedName) *DependencyBuilder[CustomResourceType, ContextType, DependencyType] {
+	b.dependency.keyF = func() types.NamespacedName {
+		return name
+	}
+	return b
+}
+
+// WithKeyFunc specifies a function that dynamically determines the dependency key.
+//
+// The function is evaluated each time Key() is requested during reconciliation.
+// This is useful when dependency naming depends on changing controller state.
+func (b *DependencyBuilder[CustomResourceType, ContextType, DependencyType]) WithKeyFunc(f func() types.NamespacedName) *DependencyBuilder[CustomResourceType, ContextType, DependencyType] {
+	b.dependency.keyF = f
+	return b
 }
 
 // WithOutput specifies where to store the resolved dependency resource.

@@ -3,6 +3,7 @@ package ctrlfwk
 import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -78,6 +79,18 @@ func NewUntypedDependencyBuilder[CustomResourceType client.Object, ContextType C
 		inner: NewDependencyBuilder(ctx, &unstructured.Unstructured{}),
 		gvk:   gvk,
 	}
+}
+
+// WithKey specifies a static NamespacedName for the untyped dependency.
+func (b *UntypedDependencyBuilder[CustomResourceType, ContextType]) WithKey(name types.NamespacedName) *UntypedDependencyBuilder[CustomResourceType, ContextType] {
+	b.inner = b.inner.WithKey(name)
+	return b
+}
+
+// WithKeyFunc specifies a function that dynamically determines the untyped dependency key.
+func (b *UntypedDependencyBuilder[CustomResourceType, ContextType]) WithKeyFunc(f func() types.NamespacedName) *UntypedDependencyBuilder[CustomResourceType, ContextType] {
+	b.inner = b.inner.WithKeyFunc(f)
+	return b
 }
 
 // Build constructs and returns the final UntypedDependency instance with all configured options.
