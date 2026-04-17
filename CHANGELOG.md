@@ -1,5 +1,15 @@
 # Changelog
 
+## [1.3.0](https://github.com/u-ctf/controller-fwk/releases/tag/v1.3.0) - 2026-04-17
+
+### ❤️ Thanks to all contributors! ❤️
+
+@yyewolf
+
+### 📈 Enhancement
+
+- feat(deps): add dependency keyF [[#32](https://github.com/u-ctf/controller-fwk/pull/32)]
+
 ## [1.2.3](https://github.com/u-ctf/controller-fwk/releases/tag/v1.2.3) - 2026-04-16
 
 ### ❤️ Thanks to all contributors! ❤️
