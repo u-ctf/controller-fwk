@@ -26,6 +26,7 @@ func NewReconcileResourceStep[
 
 			funcResult := func() StepResult {
 				cr := ctx.GetCustomResource()
+				resourcePaused := false
 
 				if IsFinalizing(cr) {
 					// If the resource does not require deletion, we can just finish here, it's gonna get garbage collected
@@ -47,6 +48,22 @@ func NewReconcileResourceStep[
 					return result.FromSubStep()
 				}
 
+				if resource.CanBePaused() {
+					current := desired.DeepCopyObject().(client.Object)
+					err := reconciler.Get(ctx, client.ObjectKeyFromObject(desired), current)
+					if err != nil {
+						if client.IgnoreNotFound(err) != nil {
+							return ResultInError(errors.Wrap(err, "failed to get resource while checking pause state"))
+						}
+					} else {
+						desired = current
+						labels := current.GetLabels()
+						if labels != nil {
+							_, resourcePaused = labels[LabelReconciliationPaused]
+						}
+					}
+				}
+
 				if IsFinalizing(cr) {
 					if err := reconciler.Delete(ctx, desired); client.IgnoreNotFound(err) != nil {
 						return ResultInError(errors.Wrap(err, "failed to delete resource"))
@@ -66,6 +83,12 @@ func NewReconcileResourceStep[
 					if result.ShouldReturn() {
 						return result.FromSubStep()
 					}
+				}
+
+				if resourcePaused {
+					logger.Info("Reconciliation is paused for this resource, skipping create or patch")
+					resource.Set(desired)
+					return ResultSuccess()
 				}
 
 				var mutator controllerutil.MutateFn = nil

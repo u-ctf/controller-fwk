@@ -88,7 +88,7 @@ func (reconciler *TestReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 		WithStep(ctrlfwk.NewFindControllerCustomResourceStep(context, reconciler)).
 		WithStep(ctrlfwk.NewResolveDynamicDependenciesStep(context, reconciler)).
 		WithStep(ctrlfwk.NewReconcileResourcesStep(context, reconciler)).
-		WithStep(ctrlfwk.NewEndStep(context, reconciler, ctrlfwk.SetReadyCondition(reconciler))).
+		WithFinalStep(ctrlfwk.NewReadyConditionFinalStep(context, reconciler, ctrlfwk.SetReadyConditionFromResult(reconciler))).
 		Build()
 
 	return stepper.Execute(context, req)

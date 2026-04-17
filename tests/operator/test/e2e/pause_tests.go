@@ -32,6 +32,17 @@ func PauseTests(getClient func() client.Client, ctx context.Context, getTestName
 		var originalConfigMapName string
 		var originalConfigMapData map[string]string
 		var testSecret *corev1.Secret
+		updateTestResourceEventually := func(description string, mutate func(resource TestableResource)) {
+			Eventually(func() error {
+				err := getClient().Get(ctx, client.ObjectKeyFromObject(testResource), testResource)
+				if err != nil {
+					return err
+				}
+
+				mutate(testResource)
+				return getClient().Update(ctx, testResource)
+			}, 10*time.Second, 250*time.Millisecond).Should(Succeed(), description)
+		}
 
 		BeforeEach(func() {
 			originalConfigMapName = "test-cm-" + uuid.NewString()[:8]
@@ -275,8 +286,14 @@ func PauseTests(getClient func() client.Client, ctx context.Context, getTestName
 			labels[PauseLabelKey] = "manual-pause"
 			testResource.SetLabels(labels)
 
-			err = getClient().Update(ctx, testResource)
-			Expect(err).NotTo(HaveOccurred(), "Update Test resource to add pause label")
+			updateTestResourceEventually("Update Test resource to add pause label", func(resource TestableResource) {
+				labels := resource.GetLabels()
+				if labels == nil {
+					labels = make(map[string]string)
+				}
+				labels[PauseLabelKey] = "manual-pause"
+				resource.SetLabels(labels)
+			})
 
 			By("modifying ConfigMap spec to test if changes are applied while paused")
 			newConfigMapData := map[string]string{
@@ -288,15 +305,11 @@ func PauseTests(getClient func() client.Client, ctx context.Context, getTestName
 			// Wait a moment to ensure the pause is fully in effect
 			time.Sleep(2 * time.Second)
 
-			err = getClient().Get(ctx, client.ObjectKeyFromObject(testResource), testResource)
-			Expect(err).NotTo(HaveOccurred(), "Get Test resource")
-
-			spec = testResource.GetSpec()
-			spec.ConfigMap.Data = newConfigMapData
-			testResource.SetSpec(spec)
-
-			err = getClient().Update(ctx, testResource)
-			Expect(err).NotTo(HaveOccurred(), "Update Test resource spec")
+			updateTestResourceEventually("Update Test resource spec", func(resource TestableResource) {
+				spec := resource.GetSpec()
+				spec.ConfigMap.Data = newConfigMapData
+				resource.SetSpec(spec)
+			})
 
 			By("verifying ConfigMap is not updated while paused")
 			// The spec update above should not trigger reconciliation due to NotPausedPredicate
@@ -352,15 +365,14 @@ func PauseTests(getClient func() client.Client, ctx context.Context, getTestName
 			}, 10*time.Second, time.Second).Should(Succeed())
 
 			By("updating pause label value without removing it")
-			err = getClient().Get(ctx, client.ObjectKeyFromObject(testResource), testResource)
-			Expect(err).NotTo(HaveOccurred(), "Get Test resource")
-
-			labels = testResource.GetLabels()
-			labels[PauseLabelKey] = "updated-maintenance-window"
-			testResource.SetLabels(labels)
-
-			err = getClient().Update(ctx, testResource)
-			Expect(err).NotTo(HaveOccurred(), "Update Test resource pause label value")
+			updateTestResourceEventually("Update Test resource pause label value", func(resource TestableResource) {
+				labels := resource.GetLabels()
+				if labels == nil {
+					labels = make(map[string]string)
+				}
+				labels[PauseLabelKey] = "updated-maintenance-window"
+				resource.SetLabels(labels)
+			})
 
 			By("verifying reconciliation remains paused with updated label value")
 			Consistently(func(g Gomega) {
@@ -471,15 +483,11 @@ func PauseTests(getClient func() client.Client, ctx context.Context, getTestName
 				"modified": "after-pause",
 			}
 
-			err = getClient().Get(ctx, client.ObjectKeyFromObject(testResource), testResource)
-			Expect(err).NotTo(HaveOccurred(), "Get Test resource")
-
-			spec = testResource.GetSpec()
-			spec.ConfigMap.Data = newConfigMapData
-			testResource.SetSpec(spec)
-
-			err = getClient().Update(ctx, testResource)
-			Expect(err).NotTo(HaveOccurred(), "Update Test resource spec")
+			updateTestResourceEventually("Update Test resource spec", func(resource TestableResource) {
+				spec := resource.GetSpec()
+				spec.ConfigMap.Data = newConfigMapData
+				resource.SetSpec(spec)
+			})
 
 			By("verifying ConfigMap data remains unchanged despite CR updates")
 			Consistently(func(g Gomega) {
@@ -506,18 +514,14 @@ func PauseTests(getClient func() client.Client, ctx context.Context, getTestName
 			Expect(err).NotTo(HaveOccurred(), "Remove pause label from ConfigMap")
 
 			By("triggering reconciliation by updating CR generation")
-			err = getClient().Get(ctx, client.ObjectKeyFromObject(testResource), testResource)
-			Expect(err).NotTo(HaveOccurred(), "Get Test resource")
-
-			spec = testResource.GetSpec()
-			if spec.ConfigMap.Data == nil {
-				spec.ConfigMap.Data = make(map[string]string)
-			}
-			spec.ConfigMap.Data["resume-trigger"] = "configmap-unpaused"
-			testResource.SetSpec(spec)
-
-			err = getClient().Update(ctx, testResource)
-			Expect(err).NotTo(HaveOccurred(), "Update Test resource to trigger reconciliation")
+			updateTestResourceEventually("Update Test resource to trigger reconciliation", func(resource TestableResource) {
+				spec := resource.GetSpec()
+				if spec.ConfigMap.Data == nil {
+					spec.ConfigMap.Data = make(map[string]string)
+				}
+				spec.ConfigMap.Data["resume-trigger"] = "configmap-unpaused"
+				resource.SetSpec(spec)
+			})
 
 			By("verifying ConfigMap is updated after removing pause label")
 			expectedData := make(map[string]string)
