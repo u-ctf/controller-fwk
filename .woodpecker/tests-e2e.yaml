@@ -31,11 +31,10 @@ steps:
   - dockerd --ip6tables=false &
   - timeout 120s bash -c 'until docker info >/dev/null 2>&1; do sleep 1; done'
 
-  - mkdir -p coverage/unit-coverage-data
-  - mkdir -p coverage/merged-coverage-data
+  - mkdir -p coverage
 
-  # Run the new instrument queue regression/parity tests and collect unit coverage data
-  - go test -v ./... -coverprofile=coverage/unit-coverage-data/unit_coverage.out -covermode=atomic -coverpkg=github.com/u-ctf/controller-fwk/...
+  # Collect unit-test coverage in the same text profile format we will merge with operator e2e coverage.
+  - go test -v ./... -coverprofile=coverage/unit_coverage.out -covermode=set -coverpkg=github.com/u-ctf/controller-fwk/...
 
   - cd tests/operator
   - go mod tidy
@@ -43,10 +42,47 @@ steps:
 
   - cd ../..
 
-  # Merge e2e and unit test coverage data, then generate a single coverage profile
-  - test -d coverage/unit-coverage-data && test "$(ls -A coverage/unit-coverage-data | wc -l)" -gt 0
-  - go tool covdata merge -i=tests/operator/coverage-data,coverage/unit-coverage-data -o coverage/merged-coverage-data
-  - go tool covdata textfmt -i=coverage/merged-coverage-data -o coverage/merged_coverage.out
+  # Merge unit and operator e2e coverage profiles into a single profile.
+  - test -s coverage/unit_coverage.out
+  - test -s tests/operator/coverage.out
+  - |
+    awk '
+      BEGIN { mode = "" }
+      FNR == 1 {
+        if ($1 != "mode:") {
+          printf "missing coverage mode header in %s\n", FILENAME > "/dev/stderr"
+          exit 1
+        }
+        if (mode == "") {
+          mode = $2
+        } else if ($2 != mode) {
+          printf "coverage mode mismatch: %s vs %s in %s\n", mode, $2, FILENAME > "/dev/stderr"
+          exit 1
+        }
+        next
+      }
+      {
+        key = $1 " " $2
+        count = $3 + 0
+        if (!(key in seen)) {
+          seen[key] = 1
+          order[++n] = key
+          counts[key] = count
+        } else if (mode == "set") {
+          if (count > counts[key]) {
+            counts[key] = count
+          }
+        } else {
+          counts[key] += count
+        }
+      }
+      END {
+        print "mode: " mode
+        for (i = 1; i <= n; i++) {
+          print order[i] " " counts[order[i]]
+        }
+      }
+    ' coverage/unit_coverage.out tests/operator/coverage.out > coverage/merged_coverage.out
 
   # Filter merged coverage to contain the first line and lines with github.com/u-ctf/controller-fwk
   - |
