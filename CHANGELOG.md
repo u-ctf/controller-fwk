@@ -1,5 +1,15 @@
 # Changelog
 
+## [1.4.0](https://github.com/u-ctf/controller-fwk/releases/tag/v1.4.0) - 2026-04-18
+
+### ❤️ Thanks to all contributors! ❤️
+
+@yyewolf
+
+### 📈 Enhancement
+
+- feat(watch): add a watch cache option builder [[#35](https://github.com/u-ctf/controller-fwk/pull/35)]
+
 ## [1.3.0](https://github.com/u-ctf/controller-fwk/releases/tag/v1.3.0) - 2026-04-17
 
 ### ❤️ Thanks to all contributors! ❤️
