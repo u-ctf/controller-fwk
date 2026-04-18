@@ -81,7 +81,7 @@ func (t *instrumenter) NewQueue(mgr ctrl.Manager) func(controllerName string, ra
 
 func (t *instrumenter) GetContextForRequest(req reconcile.Request) (*context.Context, bool) {
 	var defaultContext = context.Background()
-	if t.queue.internalQueue == nil {
+	if t.queue == nil || t.queue.internalQueue == nil {
 		return &defaultContext, false
 	}
 
