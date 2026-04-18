@@ -2,6 +2,7 @@ package ctrlfwk
 
 import (
 	"github.com/pkg/errors"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/apiutil"
@@ -11,7 +12,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime/schema"
 )
 
 func SetupWatch[
@@ -40,32 +40,41 @@ func SetupWatch[
 		}
 
 		watchSource := NewWatchKey(gvk, CacheTypeEnqueueForOwner)
-		if !reconciler.IsWatchingSource(watchSource) {
-			requestHandler := handler.EnqueueRequestForOwner(reconciler.GetScheme(), reconciler.GetRESTMapper(), ctx.GetCustomResource())
-			if isDependency {
-				managedByHandler, err := GetManagedByReconcileRequests(ctx.GetCustomResource(), reconciler.GetScheme())
-				if err != nil {
-					return ResultInError(errors.Wrap(err, "failed to add watch source"))
-				}
+		if reconciler.IsWatchingSource(watchSource) {
+			return ResultSuccess()
+		}
 
-				requestHandler = handler.EnqueueRequestsFromMapFunc(managedByHandler)
-			}
-
-			// Add the watch source to the reconciler
-			err := reconciler.GetController().Watch(
-				source.Kind(
-					reconciler.GetCache(),
-					partialObjectInterface,
-					requestHandler,
-					ResourceVersionChangedPredicate{},
-				),
-			)
+		requestHandler := handler.EnqueueRequestForOwner(reconciler.GetScheme(), reconciler.GetRESTMapper(), ctx.GetCustomResource())
+		if isDependency {
+			managedByHandler, err := GetManagedByReconcileRequests(ctx.GetCustomResource(), reconciler.GetScheme())
 			if err != nil {
 				return ResultInError(errors.Wrap(err, "failed to add watch source"))
 			}
 
-			reconciler.AddWatchSource(watchSource)
+			requestHandler = handler.EnqueueRequestsFromMapFunc(managedByHandler)
 		}
+
+		label := LabelManagedBy
+		if isDependency {
+			label = LabelDependentWatchedBy
+		}
+
+		reconciler.GetLogger().Info("Adding watch for object", "gvk", gvk, "namespace", object.GetNamespace(), "name", object.GetName(), "label", label)
+
+		// Add the watch source to the reconciler
+		err = reconciler.GetController().Watch(
+			source.Kind(
+				reconciler.GetCache(),
+				partialObjectInterface,
+				requestHandler,
+				ResourceVersionChangedPredicate{},
+			),
+		)
+		if err != nil {
+			return ResultInError(errors.Wrap(err, "failed to add watch source"))
+		}
+
+		reconciler.AddWatchSource(watchSource)
 
 		return ResultSuccess()
 	}

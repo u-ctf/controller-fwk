@@ -14,16 +14,16 @@ import (
 )
 
 const (
-	AnnotationRef = "dependencies.ctrlfwk.com/managed-by"
+	AnnotationRef = "dependencies.ctrlfwk.uctf.io/managed-by"
 )
 
 // ManagedBy represents a reference to a controller managing a resource and
 // it includes the controller's name, namespace, and GroupVersionKind (GVK)
 // information.
 type ManagedBy struct {
-	Name      string                  `json:"name"`
-	Namespace string                  `json:"namespace"`
-	GVK       schema.GroupVersionKind `json:"gvk"`
+	Name      string                  `json:"name,omitempty"`
+	Namespace string                  `json:"namespace,omitempty"`
+	GVK       schema.GroupVersionKind `json:"gvk,omitzero"`
 }
 
 // GetManagedBy retrieves the list of ManagedBy references from the specified

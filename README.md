@@ -33,30 +33,34 @@ Transform your Kubebuilder controller with minimal changes:
 ```go
 func (r *TestReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
     logger := logf.FromContext(ctx)
+    fwkCtx := ctrlfwk.NewContext[*testv1.Test](ctx, r)
 
-    stepper := ctrlfwk.NewStepper(logger,
-        ctrlfwk.WithStep(ctrlfwk.NewFindControllerCustomResourceStep(r)),
-        ctrlfwk.WithStep(ctrlfwk.NewResolveDynamicDependenciesStep(r)),
-        ctrlfwk.WithStep(ctrlfwk.NewReconcileResourcesStep(r)),
-        ctrlfwk.WithStep(ctrlfwk.NewEndStep(r, ctrlfwk.SetReadyCondition(r))),
-    )
+    stepper := ctrlfwk.NewStepperFor[*testv1.Test](fwkCtx, logger).
+        WithStep(ctrlfwk.NewFindControllerCustomResourceStep(fwkCtx, r)).
+        WithStep(ctrlfwk.NewResolveDynamicDependenciesStep(fwkCtx, r)).
+        WithStep(ctrlfwk.NewReconcileResourcesStep(fwkCtx, r)).
+        WithFinalStep(ctrlfwk.NewReadyConditionFinalStep(fwkCtx, r, ctrlfwk.SetReadyConditionFromResult(r))).
+        Build()
 
-    return stepper.Execute(ctx, req)
+    return stepper.Execute(fwkCtx, req)
 }
 ```
 
 ## Documentation
 
-📚 **[Visit our Wiki](https://github.com/yyewolf/controller-fwk/wiki)** for comprehensive guides and documentation:
+📚 **[Visit our Wiki](https://github.com/u-ctf/controller-fwk/wiki)** for comprehensive guides and documentation:
 
-- **[Getting Started](https://github.com/yyewolf/controller-fwk/wiki/Getting-Started)**: Step-by-step tutorial
-- **[Context](https://github.com/yyewolf/controller-fwk/wiki/Context)**: Resource management and concurrency
-- **[Instrumentation](https://github.com/yyewolf/controller-fwk/wiki/Instrumentation)**: Observability and monitoring
+- **[Getting Started](https://github.com/u-ctf/controller-fwk/wiki/Getting-Started)**: Current reconciliation pattern and setup
+- **[Context](https://github.com/u-ctf/controller-fwk/wiki/Context)**: Custom-resource state and typed reconciliation data
+- **[Dependencies](https://github.com/u-ctf/controller-fwk/wiki/Dependencies)**: External resource resolution
+- **[Resources](https://github.com/u-ctf/controller-fwk/wiki/Resources)**: Managed object reconciliation
+- **[Watcher Interface](https://github.com/u-ctf/controller-fwk/wiki/Watcher-Interface)**: Dynamic watch registration
+- **[Instrumentation](https://github.com/u-ctf/controller-fwk/wiki/Instrumentation)**: Observability and monitoring
 
 ## Support & Community
 
-- **Issues**: [Bug Reports & Feature Requests](https://github.com/yyewolf/controller-fwk/issues) 
-- **Discussions**: [GitHub Discussions](https://github.com/yyewolf/controller-fwk/discussions)
+- **Issues**: [Bug Reports & Feature Requests](https://github.com/u-ctf/controller-fwk/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/u-ctf/controller-fwk/discussions)
 - **API Reference**: [pkg.go.dev](https://pkg.go.dev/github.com/u-ctf/controller-fwk)
 
 ## Contributing

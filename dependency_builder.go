@@ -302,7 +302,7 @@ func (b *DependencyBuilder[CustomResourceType, ContextType, DependencyType]) Wit
 //
 // The annotation typically follows the format:
 //
-//	"dependencies.ctrlfwk.com/managed-by": "[{'name':'<controller-name>','namespace':'<controller-namespace>','gvk':{'group':'<group>','version':'<version>','kind':'<kind>'}}]"
+//	"dependencies.ctrlfwk.uctf.io/managed-by": "[{'name':'<controller-name>','namespace':'<controller-namespace>','gvk':{'group':'<group>','version':'<version>','kind':'<kind>'}}]"
 //
 // Example:
 //

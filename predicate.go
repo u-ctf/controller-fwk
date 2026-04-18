@@ -6,7 +6,7 @@ import (
 )
 
 // NotPausedPredicate is a predicate that filters out paused resources from reconciliation.
-// Resources with the ctrlfwk.com/pause label will not trigger reconciliation events.
+// Resources with the ctrlfwk.uctf.io/pause label will not trigger reconciliation events.
 type NotPausedPredicate = TypedNotPausedPredicate[client.Object]
 
 // TypedNotPausedPredicate filters reconciliation events for resources marked as paused.
