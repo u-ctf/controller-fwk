@@ -32,6 +32,11 @@ func PauseTests(getClient func() client.Client, ctx context.Context, getTestName
 		var originalConfigMapName string
 		var originalConfigMapData map[string]string
 		var testSecret *corev1.Secret
+		patchObject := func(obj client.Object, mutate func()) error {
+			original := obj.DeepCopyObject().(client.Object)
+			mutate()
+			return getClient().Patch(ctx, obj, client.MergeFrom(original))
+		}
 		updateTestResourceEventually := func(description string, mutate func(resource TestableResource)) {
 			Eventually(func() error {
 				err := getClient().Get(ctx, client.ObjectKeyFromObject(testResource), testResource)
@@ -39,8 +44,9 @@ func PauseTests(getClient func() client.Client, ctx context.Context, getTestName
 					return err
 				}
 
-				mutate(testResource)
-				return getClient().Update(ctx, testResource)
+				return patchObject(testResource, func() {
+					mutate(testResource)
+				})
 			}, 10*time.Second, 250*time.Millisecond).Should(Succeed(), description)
 		}
 
@@ -69,12 +75,19 @@ func PauseTests(getClient func() client.Client, ctx context.Context, getTestName
 		AfterEach(func() {
 			// Cleanup labels to avoid interference with deletion
 			if testResource != nil {
-				labels := testResource.GetLabels()
-				if labels != nil {
-					delete(labels, PauseLabelKey)
-					testResource.SetLabels(labels)
-					err := getClient().Update(ctx, testResource)
-					Expect(err).NotTo(HaveOccurred(), "Cleanup pause label from test resource")
+				err := getClient().Get(ctx, client.ObjectKeyFromObject(testResource), testResource)
+				Expect(client.IgnoreNotFound(err)).To(Succeed(), "Get Test resource for cleanup")
+
+				if err == nil {
+					labels := testResource.GetLabels()
+					if labels != nil {
+						err = patchObject(testResource, func() {
+							labels := testResource.GetLabels()
+							delete(labels, PauseLabelKey)
+							testResource.SetLabels(labels)
+						})
+						Expect(err).NotTo(HaveOccurred(), "Cleanup pause label from test resource")
+					}
 				}
 			}
 
@@ -191,18 +204,18 @@ func PauseTests(getClient func() client.Client, ctx context.Context, getTestName
 
 			// Remove pause label
 			labels = testResource.GetLabels()
-			delete(labels, PauseLabelKey)
-			testResource.SetLabels(labels)
+			err = patchObject(testResource, func() {
+				delete(labels, PauseLabelKey)
+				testResource.SetLabels(labels)
 
-			// Also update the spec to trigger generation change (required by GenerationChangedPredicate)
-			spec = testResource.GetSpec()
-			if spec.ConfigMap.Data == nil {
-				spec.ConfigMap.Data = make(map[string]string)
-			}
-			spec.ConfigMap.Data["resume-trigger"] = "true"
-			testResource.SetSpec(spec)
-
-			err = getClient().Update(ctx, testResource)
+				// Also update the spec to trigger generation change (required by GenerationChangedPredicate)
+				spec = testResource.GetSpec()
+				if spec.ConfigMap.Data == nil {
+					spec.ConfigMap.Data = make(map[string]string)
+				}
+				spec.ConfigMap.Data["resume-trigger"] = "true"
+				testResource.SetSpec(spec)
+			})
 			Expect(err).NotTo(HaveOccurred(), "Update Test resource to remove pause label")
 
 			By("verifying ConfigMap is created after unpausing")
@@ -469,10 +482,10 @@ func PauseTests(getClient func() client.Client, ctx context.Context, getTestName
 			if labels == nil {
 				labels = make(map[string]string)
 			}
-			labels[PauseLabelKey] = "configmap-pause"
-			cm.SetLabels(labels)
-
-			err = getClient().Update(ctx, cm)
+			err = patchObject(cm, func() {
+				labels[PauseLabelKey] = "configmap-pause"
+				cm.SetLabels(labels)
+			})
 			Expect(err).NotTo(HaveOccurred(), "Update ConfigMap to add pause label")
 
 			By("updating the CR spec to trigger ConfigMap changes")
@@ -507,10 +520,10 @@ func PauseTests(getClient func() client.Client, ctx context.Context, getTestName
 			Expect(err).NotTo(HaveOccurred(), "Get ConfigMap")
 
 			labels = cm.GetLabels()
-			delete(labels, PauseLabelKey)
-			cm.SetLabels(labels)
-
-			err = getClient().Update(ctx, cm)
+			err = patchObject(cm, func() {
+				delete(labels, PauseLabelKey)
+				cm.SetLabels(labels)
+			})
 			Expect(err).NotTo(HaveOccurred(), "Remove pause label from ConfigMap")
 
 			By("triggering reconciliation by updating CR generation")

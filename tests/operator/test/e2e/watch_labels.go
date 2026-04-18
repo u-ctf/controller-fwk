@@ -24,7 +24,7 @@ func (c *labeledClient) Create(ctx context.Context, obj client.Object, opts ...c
 	return c.Client.Create(ctx, obj, opts...)
 }
 
-func (c *labeledClient) Update(ctx context.Context, obj client.Object, opts ...client.UpdateOption) error {
+func (c *labeledClient) Patch(ctx context.Context, obj client.Object, patch client.Patch, opts ...client.PatchOption) error {
 	testlabels.ApplyToObject(obj)
-	return c.Client.Update(ctx, obj, opts...)
+	return c.Client.Patch(ctx, obj, patch, opts...)
 }
