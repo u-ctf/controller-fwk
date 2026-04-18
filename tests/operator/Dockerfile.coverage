@@ -19,9 +19,6 @@ COPY . .
 
 RUN go mod edit -replace github.com/u-ctf/controller-fwk=./library
 
-# Install coverage tool
-RUN go install github.com/u-ctf/controller-fwk/cmd/coverage-merger@latest || true
-
 # Build with coverage instrumentation
 # We build with -cover flag and specify the packages to collect coverage for
 RUN CGO_ENABLED=0 GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH} go build \

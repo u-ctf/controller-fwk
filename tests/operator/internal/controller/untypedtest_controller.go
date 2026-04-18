@@ -95,10 +95,14 @@ func (reconciler *UntypedTestReconciler) Reconcile(ctx context.Context, req ctrl
 func (reconciler *UntypedTestReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	ctrler, err := instrument.InstrumentedControllerManagedBy(reconciler, mgr).
 		For(&testv1.UntypedTest{}, builder.WithPredicates(
-			// Requires the CR to not be paused and to have a generation change
-			predicate.And(
-				ctrlfwk.NotPausedPredicate{},
-				predicate.GenerationChangedPredicate{},
+			predicate.Or(
+				// Regular reconciliation still requires the CR to not be paused and to have a generation change.
+				predicate.And(
+					ctrlfwk.NotPausedPredicate{},
+					predicate.GenerationChangedPredicate{},
+				),
+				// Finalization must continue even without a generation change.
+				ctrlfwk.FinalizingPredicate{},
 			),
 		)).
 		Named("untypedtest").
