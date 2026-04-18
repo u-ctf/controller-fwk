@@ -10,6 +10,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
 	testv1 "operator/api/v1"
+	"operator/internal/testlabels"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -45,6 +46,7 @@ func NewUntypedConfigMapResource(ctx testv1.UntypedTestContext, reconciler ctrlf
 			}
 
 			unstructured.SetNestedMap(resource.Object, datas, "data")
+			testlabels.ApplyToObject(resource)
 
 			return controllerutil.SetOwnerReference(cr, resource, reconciler.Scheme())
 		}).

@@ -19,6 +19,7 @@ package controller
 import (
 	"context"
 	testv1 "operator/api/v1"
+	"operator/internal/testlabels"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -52,6 +53,7 @@ var _ = Describe("UntypedTest Controller", func() {
 					},
 					// TODO(user): Specify other spec details if needed.
 				}
+				testlabels.ApplyToObject(resource)
 				Expect(k8sClient.Create(ctx, resource)).To(Succeed())
 			}
 		})

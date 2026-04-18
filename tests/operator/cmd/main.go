@@ -24,6 +24,7 @@ import (
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
 	// to ensure that exec-entrypoint and run can make use of them.
 	"go.opentelemetry.io/otel"
+	corev1 "k8s.io/api/core/v1"
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 	"k8s.io/utils/ptr"
 
@@ -47,6 +48,7 @@ import (
 
 	testv1 "operator/api/v1"
 	"operator/internal/controller"
+	"operator/internal/testlabels"
 	// +kubebuilder:scaffold:imports
 )
 
@@ -164,8 +166,20 @@ func main() {
 		metricsServerOptions.KeyName = metricsCertKey
 	}
 
+	watchByLabel := ctrlfwk.NewWatchCacheByObjectBuilder().
+		WithLabelSelector(testlabels.Selector()).
+		Build()
+
+	cacheOptions := ctrlfwk.NewWatchCacheOptionsBuilder().
+		WithByObjectFor(&testv1.Test{}, watchByLabel).
+		WithByObjectFor(&testv1.UntypedTest{}, watchByLabel).
+		WithByObjectFor(&corev1.Secret{}, watchByLabel).
+		WithByObjectFor(&corev1.ConfigMap{}, watchByLabel).
+		Build()
+
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
 		Scheme:                 scheme,
+		Cache:                  cacheOptions,
 		Metrics:                metricsServerOptions,
 		WebhookServer:          webhookServer,
 		HealthProbeBindAddress: probeAddr,

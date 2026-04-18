@@ -270,6 +270,7 @@ var _ = Describe("Manager", func() {
 				Scheme: runtimeScheme,
 			})
 			Expect(err).NotTo(HaveOccurred(), "Create the runtime client")
+			c = newLabeledClient(c)
 
 			By("creating test namespace")
 			testNamespace = corev1.Namespace{

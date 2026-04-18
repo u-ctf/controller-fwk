@@ -10,6 +10,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
 	testv1 "operator/api/v1"
+	"operator/internal/testlabels"
 
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -41,6 +42,7 @@ func NewConfigMapResource(ctx testv1.TestContext, reconciler ctrlfwk.ReconcilerW
 		WithMutator(func(resource *corev1.ConfigMap) (err error) {
 			resource.Data = make(map[string]string)
 			maps.Copy(resource.Data, cr.Spec.ConfigMap.Data)
+			testlabels.ApplyToObject(resource)
 
 			return controllerutil.SetOwnerReference(cr, resource, reconciler.Scheme())
 		}).
