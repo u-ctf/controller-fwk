@@ -8,6 +8,7 @@
 
 ### 📈 Enhancement
 
+- fix: make NewResolveDependencyStep return a custom step result [[#43](https://github.com/u-ctf/controller-fwk/pull/43)]
 - feat: make StepResult implement an interface [[#40](https://github.com/u-ctf/controller-fwk/pull/40)]
 
 ## [1.4.0](https://github.com/u-ctf/controller-fwk/releases/tag/v1.4.0) - 2026-04-18
