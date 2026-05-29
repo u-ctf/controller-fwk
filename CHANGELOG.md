@@ -1,5 +1,15 @@
 # Changelog
 
+## [1.5.0](https://github.com/u-ctf/controller-fwk/releases/tag/v1.5.0) - 2026-05-29
+
+### ❤️ Thanks to all contributors! ❤️
+
+@tomatobet
+
+### 📈 Enhancement
+
+- feat: make StepResult implement an interface [[#40](https://github.com/u-ctf/controller-fwk/pull/40)]
+
 ## [1.4.0](https://github.com/u-ctf/controller-fwk/releases/tag/v1.4.0) - 2026-04-18
 
 ### ❤️ Thanks to all contributors! ❤️
