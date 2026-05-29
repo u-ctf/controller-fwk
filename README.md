@@ -1,3 +1,7 @@
+<p align="center">
+  <img src=".assets/controller-fwk-logo.svg" width="200" alt="Controller Framework Logo">
+</p>
+
 # Controller Framework (ctrlfwk)
 
 [![Pipeline](https://woodpecker.yewolf.fr/api/badges/5/status.svg)](https://woodpecker.yewolf.fr/repos/5)
