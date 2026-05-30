@@ -1,0 +1,62 @@
+<svg
+    width="280"
+    height="280"
+    viewBox="0 0 280 280"
+    fill="none"
+    xmlns="http://www.w3.org/2000/svg"
+    role="img"
+    aria-labelledby="title desc"
+>
+  <title id="title">controller-fwk</title>
+  <desc
+        id="desc"
+    >A hexagonal mark with a helm wheel, stepper nodes and dependency edges</desc>
+  <defs>
+    <linearGradient id="hexFill" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#3970e4" />
+      <stop offset="1" stop-color="#2a52b0" />
+    </linearGradient>
+  </defs>
+
+  <!-- Mark -->
+  <g transform="translate(140,140)">
+    <polygon
+            points="0,-110 95,-55 95,55 0,110 -95,55 -95,-55"
+            fill="url(#hexFill)"
+        />
+    <polygon
+            points="0,-110 95,-55 95,55 0,110 -95,55 -95,-55"
+            fill="none"
+            stroke="#1f3d82"
+            stroke-width="3"
+        />
+
+    <circle
+            cx="0"
+            cy="0"
+            r="62"
+            fill="none"
+            stroke="#ffffff"
+            stroke-width="6"
+        />
+    <circle cx="0" cy="0" r="16" fill="#ffffff" />
+    <circle cx="0" cy="0" r="7" fill="#2a52b0" />
+
+    <g stroke="#ffffff" stroke-width="11" stroke-linecap="round">
+      <line x1="0" y1="-16" x2="0" y2="-62" />
+      <line x1="14" y1="8" x2="54" y2="31" />
+      <line x1="-14" y1="8" x2="-54" y2="31" />
+    </g>
+
+    <g fill="#ffd34d">
+      <circle cx="0" cy="-62" r="13" />
+      <circle cx="54" cy="31" r="13" />
+      <circle cx="-54" cy="31" r="13" />
+    </g>
+    <g fill="#2a52b0">
+      <circle cx="0" cy="-62" r="5" />
+      <circle cx="54" cy="31" r="5" />
+      <circle cx="-54" cy="31" r="5" />
+    </g>
+  </g>
+</svg>
