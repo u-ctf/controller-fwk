@@ -1,5 +1,15 @@
 # Changelog
 
+## [1.5.1](https://github.com/u-ctf/controller-fwk/releases/tag/v1.5.1) - 2026-05-30
+
+### ❤️ Thanks to all contributors! ❤️
+
+@yyewolf
+
+### Misc
+
+- chore(ctrlfwk): add logo [[#44](https://github.com/u-ctf/controller-fwk/pull/44)]
+
 ## [1.5.0](https://github.com/u-ctf/controller-fwk/releases/tag/v1.5.0) - 2026-05-29
 
 ### ❤️ Thanks to all contributors! ❤️
