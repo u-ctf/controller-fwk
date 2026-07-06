@@ -3,6 +3,7 @@ package ctrlfwk
 import (
 	"github.com/go-logr/logr"
 	"github.com/pkg/errors"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	ctrl "sigs.k8s.io/controller-runtime"
 )
 
@@ -31,7 +32,8 @@ func NewEndStep[
 				}
 
 				if changed {
-					if err = PatchCustomResourceStatus(ctx, reconciler); err != nil {
+					err := PatchCustomResourceStatus(ctx, reconciler)
+					if err != nil && !apierrors.IsNotFound(err) {
 						return ResultInError(errors.Wrap(err, "failed to update controller resource"))
 					}
 				}
@@ -83,7 +85,8 @@ func NewReadyConditionFinalStep[
 				return nil
 			}
 
-			if err = PatchCustomResourceStatus(ctx, reconciler); err != nil {
+			err = PatchCustomResourceStatus(ctx, reconciler)
+			if err != nil && !apierrors.IsNotFound(err) {
 				return errors.Wrap(err, "failed to update controller resource")
 			}
 
