@@ -1,13 +1,14 @@
 # Changelog
 
-## [1.5.1](https://github.com/u-ctf/controller-fwk/releases/tag/v1.5.1) - 2026-05-30
+## [1.5.1](https://github.com/u-ctf/controller-fwk/releases/tag/v1.5.1) - 2026-07-06
 
 ### ❤️ Thanks to all contributors! ❤️
 
-@yyewolf
+@eth59, @yyewolf
 
 ### Misc
 
+- feat: ignore not found errors in step_end [[#46](https://github.com/u-ctf/controller-fwk/pull/46)]
 - chore(ctrlfwk): add logo [[#44](https://github.com/u-ctf/controller-fwk/pull/44)]
 
 ## [1.5.0](https://github.com/u-ctf/controller-fwk/releases/tag/v1.5.0) - 2026-05-29
