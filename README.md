@@ -10,7 +10,7 @@
 [![Go Reference](https://pkg.go.dev/badge/github.com/u-ctf/controller-fwk.svg)](https://pkg.go.dev/github.com/u-ctf/controller-fwk)
 [![GitHub release](https://img.shields.io/github/v/release/u-ctf/controller-fwk)](https://github.com/u-ctf/controller-fwk/releases)
 [![License](https://img.shields.io/github/license/u-ctf/controller-fwk)](LICENSE)
-[![Go Report Card](https://goreportcard.com/badge/github.com/u-ctf/controller-fwk)](https://goreportcard.com/report/github.com/u-ctf/controller-fwk)
+
 
 A powerful and extensible framework for building Kubernetes controllers using [controller-runtime](https://github.com/kubernetes-sigs/controller-runtime). Transform your imperative controller logic into a declarative, step-based system that's easier to understand, test, and extend.
 
@@ -52,14 +52,14 @@ func (r *TestReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 
 ## Documentation
 
-📚 **[Visit our Wiki](https://github.com/u-ctf/controller-fwk/wiki)** for comprehensive guides and documentation:
+📚 **[Read the docs](https://u-ctf.github.io/controller-fwk/)** for guides and reference:
 
-- **[Getting Started](https://github.com/u-ctf/controller-fwk/wiki/Getting-Started)**: Current reconciliation pattern and setup
-- **[Context](https://github.com/u-ctf/controller-fwk/wiki/Context)**: Custom-resource state and typed reconciliation data
-- **[Dependencies](https://github.com/u-ctf/controller-fwk/wiki/Dependencies)**: External resource resolution
-- **[Resources](https://github.com/u-ctf/controller-fwk/wiki/Resources)**: Managed object reconciliation
-- **[Watcher Interface](https://github.com/u-ctf/controller-fwk/wiki/Watcher-Interface)**: Dynamic watch registration
-- **[Instrumentation](https://github.com/u-ctf/controller-fwk/wiki/Instrumentation)**: Observability and monitoring
+- **[Getting Started](https://u-ctf.github.io/controller-fwk/getting-started)**: Current reconciliation pattern and setup
+- **[Context](https://u-ctf.github.io/controller-fwk/context)**: Custom-resource state and typed reconciliation data
+- **[Dependencies](https://u-ctf.github.io/controller-fwk/dependencies)**: External resource resolution
+- **[Resources](https://u-ctf.github.io/controller-fwk/resources)**: Managed object reconciliation
+- **[Watcher Interface](https://u-ctf.github.io/controller-fwk/watcher-interface)**: Dynamic watch registration
+- **[Instrumentation](https://u-ctf.github.io/controller-fwk/instrumentation)**: Observability and monitoring
 
 ## Support & Community
 

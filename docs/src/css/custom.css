@@ -1,0 +1,23 @@
+/* Minimal theme overrides for the Controller Framework docs. */
+:root {
+  --ifm-color-primary: #2563eb;
+  --ifm-color-primary-dark: #175ce0;
+  --ifm-color-primary-darker: #1657d3;
+  --ifm-color-primary-darkest: #1247ae;
+  --ifm-color-primary-light: #3d75ee;
+  --ifm-color-primary-lighter: #4a7ff0;
+  --ifm-color-primary-lightest: #6f99f3;
+  --ifm-code-font-size: 95%;
+  --docusaurus-highlighted-code-line-bg: rgba(0, 0, 0, 0.1);
+}
+
+[data-theme='dark'] {
+  --ifm-color-primary: #6f99f3;
+  --ifm-color-primary-dark: #4d81f0;
+  --ifm-color-primary-darker: #3c76ef;
+  --ifm-color-primary-darkest: #1355e9;
+  --ifm-color-primary-light: #91b1f6;
+  --ifm-color-primary-lighter: #a2bcf7;
+  --ifm-color-primary-lightest: #d5e0fb;
+  --docusaurus-highlighted-code-line-bg: rgba(0, 0, 0, 0.3);
+}
