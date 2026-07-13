@@ -21,6 +21,8 @@ type GenericResource[CustomResource client.Object, ContextType Context[CustomRes
 	ShouldDeleteNow() bool
 	// GetMutator returns the mutation function passed to controllerutil.CreateOrPatch.
 	GetMutator(obj client.Object) func() error
+	// HandleMutatorError is used to handle the errors of GetMutator, by default it simply returns the error as-is.
+	HandleMutatorError(error) error
 	// Set stores the reconciled resource object after create-or-patch.
 	Set(obj client.Object)
 	// Get returns the currently stored resource object.
@@ -57,9 +59,10 @@ type GenericResource[CustomResource client.Object, ContextType Context[CustomRes
 var _ GenericResource[client.Object, Context[client.Object]] = &Resource[client.Object, Context[client.Object], client.Object]{}
 
 type Resource[CustomResource client.Object, ContextType Context[CustomResource], ResourceType client.Object] struct {
-	userIdentifier string
-	keyF           func() types.NamespacedName
-	mutateF        Mutator[ResourceType]
+	userIdentifier      string
+	keyF                func() types.NamespacedName
+	mutateF             Mutator[ResourceType]
+	mutatorErrorHandler func(error) error
 
 	isReadyF          func(obj ResourceType) bool
 	shouldDeleteF     func() bool
@@ -253,6 +256,14 @@ func (c *Resource[CustomResource, ContextType, ResourceType]) GetMutator(obj cli
 		}
 		return nil
 	}
+}
+
+// HandleMutatorError is used to handle the errors of GetMutator, by default it simply returns the error as-is.
+func (c *Resource[CustomResource, ContextType, ResourceType]) HandleMutatorError(err error) error {
+	if c.mutatorErrorHandler != nil {
+		return c.mutatorErrorHandler(err)
+	}
+	return err
 }
 
 // CanBePaused reports whether pause-label checks should skip mutation for this resource.
