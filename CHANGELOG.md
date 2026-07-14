@@ -1,5 +1,15 @@
 # Changelog
 
+## [1.5.2](https://github.com/u-ctf/controller-fwk/releases/tag/v1.5.2) - 2026-07-14
+
+### ❤️ Thanks to all contributors! ❤️
+
+@yyewolf
+
+### Misc
+
+- feat(resource): add custom error handler [[#47](https://github.com/u-ctf/controller-fwk/pull/47)]
+
 ## [1.5.1](https://github.com/u-ctf/controller-fwk/releases/tag/v1.5.1) - 2026-07-06
 
 ### ❤️ Thanks to all contributors! ❤️
