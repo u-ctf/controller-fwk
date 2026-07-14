@@ -103,10 +103,13 @@ func NewReconcileResourceStep[
 							}
 						}
 
-						return wrappedFunc()
+						return resource.HandleMutatorError(wrappedFunc())
 					}
 				} else {
-					mutator = resource.GetMutator(desired)
+					wrappedFunc := resource.GetMutator(desired)
+					mutator = func() error {
+						return resource.HandleMutatorError(wrappedFunc())
+					}
 				}
 
 				patchResult, err := controllerutil.CreateOrPatch(ctx, reconciler, desired, mutator)

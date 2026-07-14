@@ -185,6 +185,38 @@ func (b *ResourceBuilder[CustomResource, ContextType, ResourceType]) WithMutator
 	return b
 }
 
+// WithMutatorErrorHandler configures a custom error handler for mutator errors.
+//
+// The handler receives errors returned by the mutator function passed to CreateOrPatch.
+// It can transform, log, or suppress them. By default mutator errors are returned as-is.
+//
+// Common use cases:
+//   - Treating specific mutator errors as non-fatal
+//   - Augmenting errors with additional context before bubbling up
+//   - Aggregating mutator errors for debugging
+//   - Ignoring NamespaceTerminating errors from mutators touching resources in terminating namespaces
+//
+// Example:
+//
+//	.WithMutatorErrorHandler(func(err error) error {
+//		if errors.Is(err, ErrNonFatalValidation) {
+//			return nil // swallow non-fatal errors
+//		}
+//		return fmt.Errorf("failed to mutate deployment: %w", err)
+//	})
+//
+//	.WithMutatorErrorHandler(func(err error) error {
+//		// Ignore errors caused by namespace termination
+//		if apierrors.HasStatusCause(err, corev1.NamespaceTerminatingCause) {
+//			return nil
+//		}
+//		return err
+//	})
+func (b *ResourceBuilder[CustomResource, ContextType, ResourceType]) WithMutatorErrorHandler(f func(error) error) *ResourceBuilder[CustomResource, ContextType, ResourceType] {
+	b.resource.mutatorErrorHandler = f
+	return b
+}
+
 // WithOutput specifies where to store the reconciled resource after successful operations.
 //
 // The provided object will be populated with the resource's current state from the

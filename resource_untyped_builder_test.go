@@ -1,6 +1,7 @@
 package ctrlfwk_test
 
 import (
+	"errors"
 	"testing"
 
 	ctrlfwk "github.com/u-ctf/controller-fwk"
@@ -134,5 +135,25 @@ func TestUntypedResourceBuilder_ConfiguresWrappers(t *testing.T) {
 	}
 	if got := staticObj.(*unstructured.Unstructured); got.GetName() != "fixed" || got.GetNamespace() != "other" {
 		t.Fatalf("unexpected static untyped key: %s/%s", got.GetNamespace(), got.GetName())
+	}
+}
+
+func TestUntypedResourceBuilder_ConfiguresMutatorErrorHandler(t *testing.T) {
+	ctx := newTestContext()
+	handlerCalled := false
+	resource := ctrlfwk.NewUntypedResourceBuilder(ctx, schema.GroupVersionKind{Group: "example.com", Version: "v1", Kind: "Widget"}).
+		WithMutatorErrorHandler(func(err error) error {
+			handlerCalled = true
+			return errors.New("wrapped: " + err.Error())
+		}).
+		Build()
+
+	originalErr := errors.New("mutator failed")
+	handled := resource.HandleMutatorError(originalErr)
+	if want := "wrapped: mutator failed"; handled.Error() != want {
+		t.Fatalf("expected error %q, got %q", want, handled.Error())
+	}
+	if !handlerCalled {
+		t.Fatal("expected error handler to be invoked")
 	}
 }

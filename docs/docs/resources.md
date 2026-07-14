@@ -76,6 +76,33 @@ ctrlfwk.NewReconcileResourcesStep(fwkCtx, reconciler)
 - `WithUserIdentifier(...)`
 - `WithCanBePaused(true)`
 - `WithCanBePausedFunc(...)`
+- `WithMutatorErrorHandler(...)`
+
+## Mutator error handling
+
+By default, errors from the `WithMutator` callback propagate directly to `CreateOrPatch`. Use `WithMutatorErrorHandler` to transform, log, or suppress them before they cause the step to fail.
+
+One common use case is ignoring transient errors caused by a namespace being terminated:
+
+```go
+type pausableResource struct{}
+
+func (p pausableResource) GetPausableResources(context.Context) ... {}
+
+ctrlfwk.NewResourceBuilder(ctx, &corev1.ConfigMap{}).
+    WithMutator(func(cm *corev1.ConfigMap) error {
+        return controllerutil.SetOwnerReference(ctx.GetCustomResource(), cm, reconciler.Scheme())
+    }).
+    WithMutatorErrorHandler(func(err error) error {
+        if apierrors.HasStatusCause(err, corev1.NamespaceTerminatingCause) {
+            return nil // ignore because the resource will be garbage-collected
+        }
+        return err
+    }).
+    Build()
+```
+
+The `WithMutatorErrorHandler` method is also available on `NewUntypedResourceBuilder`.
 
 ## Untyped resource builder
 

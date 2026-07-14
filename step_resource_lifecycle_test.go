@@ -1,6 +1,8 @@
 package ctrlfwk_test
 
 import (
+	"errors"
+	"strings"
 	"testing"
 	"time"
 
@@ -197,4 +199,67 @@ func TestNewReconcileResourceStep_FinalizationPaths(t *testing.T) {
 			t.Fatalf("expected managed resource to be deleted during finalization, got %v", err)
 		}
 	})
+}
+
+func TestNewReconcileResourceStep_MutatorErrorHandlerTransformsError(t *testing.T) {
+	scheme := newResourceScheme(t)
+	cr := &corev1.ConfigMap{ObjectMeta: metav1.ObjectMeta{Name: "controller", Namespace: "default"}}
+	reconciler := fakeResourceReconciler{Client: fake.NewClientBuilder().WithScheme(scheme).WithObjects(cr).Build()}
+	ctx := newResourceStepTestContext()
+	ctx.SetCustomResource(cr)
+
+	resource := ctrlfwk.NewResourceBuilder(ctx, &corev1.ConfigMap{}).
+		WithKey(types.NamespacedName{Name: "managed", Namespace: "default"}).
+		WithMutator(func(cm *corev1.ConfigMap) error {
+			return errors.New("original mutator error")
+		}).
+		WithMutatorErrorHandler(func(err error) error {
+			return errors.New("transformed error")
+		}).
+		Build()
+
+	result := ctrlfwk.NewReconcileResourceStep(ctx, reconciler, resource).Step(ctx, logr.Discard(), ctrl.Request{})
+	if result.Error() == nil {
+		t.Fatal("expected error from reconciliation")
+	}
+	if !strings.Contains(result.Error().Error(), "transformed error") {
+		t.Fatalf("expected transformed error in result, got %q", result.Error().Error())
+	}
+}
+
+func TestNewReconcileResourceStep_MutatorErrorHandlerCanSwallowError(t *testing.T) {
+	scheme := newResourceScheme(t)
+	cr := &corev1.ConfigMap{ObjectMeta: metav1.ObjectMeta{Name: "controller", Namespace: "default"}}
+	reconciler := fakeResourceReconciler{Client: fake.NewClientBuilder().WithScheme(scheme).WithObjects(cr).Build()}
+	ctx := newResourceStepTestContext()
+	ctx.SetCustomResource(cr)
+
+	afterCalled := false
+	resource := ctrlfwk.NewResourceBuilder(ctx, &corev1.ConfigMap{}).
+		WithKey(types.NamespacedName{Name: "managed", Namespace: "default"}).
+		WithMutator(func(cm *corev1.ConfigMap) error {
+			return errors.New("should be swallowed")
+		}).
+		WithMutatorErrorHandler(func(err error) error {
+			return nil // swallow the error, reconciliation continues
+		}).
+		WithAfterReconcile(func(_ *resourceStepTestContext, cm *corev1.ConfigMap) error {
+			afterCalled = cm != nil
+			return nil
+		}).
+		Build()
+
+	result := ctrlfwk.NewReconcileResourceStep(ctx, reconciler, resource).Step(ctx, logr.Discard(), ctrl.Request{})
+	if result.Error() != nil {
+		t.Fatalf("expected swallowed mutator error to succeed, got %v", result.Error())
+	}
+	if !afterCalled {
+		t.Fatal("expected AfterReconcile to run when mutator error is swallowed")
+	}
+
+	// Verify the resource was actually created despite the swallowed mutator error
+	stored := &corev1.ConfigMap{}
+	if err := reconciler.Get(ctx, client.ObjectKey{Name: "managed", Namespace: "default"}, stored); err != nil {
+		t.Fatalf("expected resource to be created even when mutator error is swallowed, got %v", err)
+	}
 }

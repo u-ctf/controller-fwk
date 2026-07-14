@@ -229,6 +229,7 @@ func (earlyReturnResource) ID() string                                          
 func (earlyReturnResource) ObjectMetaGenerator() (client.Object, bool, error)            { return nil, true, nil }
 func (earlyReturnResource) ShouldDeleteNow() bool                                        { return true }
 func (earlyReturnResource) GetMutator(client.Object) func() error                        { return func() error { return nil } }
+func (earlyReturnResource) HandleMutatorError(err error) error                           { return err }
 func (earlyReturnResource) Set(client.Object)                                            {}
 func (earlyReturnResource) Get() client.Object                                           { return nil }
 func (earlyReturnResource) Kind() string                                                 { return "ConfigMap" }
@@ -241,6 +242,27 @@ func (earlyReturnResource) OnCreate(*resourceStepTestContext, client.Object) err
 func (earlyReturnResource) OnUpdate(*resourceStepTestContext, client.Object) error       { return nil }
 func (earlyReturnResource) OnDelete(*resourceStepTestContext, client.Object) error       { return nil }
 func (earlyReturnResource) OnFinalize(*resourceStepTestContext, client.Object) error     { return nil }
+
+func TestResourceBuilder_ConfiguresMutatorErrorHandler(t *testing.T) {
+	ctx := newTestContext()
+	handlerCalled := false
+	resource := ctrlfwk.NewResourceBuilder(ctx, &corev1.ConfigMap{}).
+		WithKey(types.NamespacedName{Name: "managed", Namespace: "default"}).
+		WithMutatorErrorHandler(func(err error) error {
+			handlerCalled = true
+			return errors.New("wrapped: " + err.Error())
+		}).
+		Build()
+
+	originalErr := errors.New("mutator failed")
+	handled := resource.HandleMutatorError(originalErr)
+	if want := "wrapped: mutator failed"; handled.Error() != want {
+		t.Fatalf("expected error %q, got %q", want, handled.Error())
+	}
+	if !handlerCalled {
+		t.Fatal("expected error handler to be invoked")
+	}
+}
 
 func TestReconcileResourcesStep_HandlesErrorsAndEarlyReturn(t *testing.T) {
 	scheme := runtime.NewScheme()

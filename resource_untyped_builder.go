@@ -406,6 +406,17 @@ func (b *UntypedResourceBuilder[CustomResource, ContextType]) WithMutator(f Muta
 	return b
 }
 
+// WithMutatorErrorHandler configures a custom error handler for mutator errors.
+//
+// The handler receives errors returned by the mutator function passed to CreateOrPatch.
+// It can transform, log, or suppress them. By default mutator errors are returned as-is.
+//
+// See the typed [ResourceBuilder.WithMutatorErrorHandler] for detailed examples.
+func (b *UntypedResourceBuilder[CustomResource, ContextType]) WithMutatorErrorHandler(f func(error) error) *UntypedResourceBuilder[CustomResource, ContextType] {
+	b.inner = b.inner.WithMutatorErrorHandler(f)
+	return b
+}
+
 // WithOutput specifies where to store the reconciled untyped resource after successful operations.
 //
 // The provided unstructured.Unstructured object will be populated with the resource's
