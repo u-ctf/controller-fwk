@@ -2,6 +2,7 @@ package instrument
 
 import (
 	"context"
+	"sync"
 	"testing"
 	"time"
 
@@ -200,4 +201,38 @@ func TestInstrumentedQueue_MatchesWorkqueueBehavior_ForDelayedThenImmediateAdd(t
 	if plainQueue.Len() != queueWithContext.Len() {
 		t.Fatalf("expected same queue length after dequeue, workqueue len=%d instrumented len=%d", plainQueue.Len(), queueWithContext.Len())
 	}
+}
+func TestInstrumentedQueue_Forget_Race(t *testing.T) {
+	internalQueue := workqueue.NewTypedRateLimitingQueue[*reconcile.Request](workqueue.DefaultTypedControllerRateLimiter[*reconcile.Request]())
+	q := NewInstrumentedQueue(internalQueue)
+
+	ctx := context.Background()
+	queueWithContext := q.WithContext(&ctx)
+
+	req := reconcile.Request{
+		NamespacedName: types.NamespacedName{
+			Namespace: "test-namespace",
+			Name:      "test-name",
+		},
+	}
+
+	queueWithContext.Add(req)
+
+	var wg sync.WaitGroup
+	for range 100 {
+		wg.Add(2)
+		go func() {
+			defer wg.Done()
+			for range 100 {
+				queueWithContext.Add(req)
+			}
+		}()
+		go func() {
+			defer wg.Done()
+			for range 1000 {
+				queueWithContext.Forget(req)
+			}
+		}()
+	}
+	wg.Wait()
 }
