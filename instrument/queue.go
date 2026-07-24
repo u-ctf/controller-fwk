@@ -121,28 +121,28 @@ func (q InstrumentedQueue[T]) AddRateLimited(item T) {
 }
 
 func (q InstrumentedQueue[T]) Done(item T) {
+	q.lock.Lock()
+	defer q.lock.Unlock()
+
 	capsule, ok := q.metamap[item]
 	if !ok {
 		return
 	}
 
 	q.internalQueue.Done(capsule.Object.Value())
-
-	q.lock.Lock()
-	defer q.lock.Unlock()
 	delete(q.metamap, item)
 }
 
 func (q InstrumentedQueue[T]) Forget(item T) {
+	q.lock.Lock()
+	defer q.lock.Unlock()
+
 	capsule, ok := q.metamap[item]
 	if !ok {
 		return
 	}
 
 	q.internalQueue.Forget(capsule.Object.Value())
-
-	q.lock.Lock()
-	defer q.lock.Unlock()
 	delete(q.metamap, item)
 }
 
