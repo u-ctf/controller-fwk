@@ -1,5 +1,15 @@
 # Changelog
 
+## [1.5.3](https://github.com/u-ctf/controller-fwk/releases/tag/v1.5.3) - 2026-07-24
+
+### ❤️ Thanks to all contributors! ❤️
+
+@tomatobet
+
+### 🐛 Bug Fixes
+
+- fix(instrument): fix race condition in instrumented queue [[#50](https://github.com/u-ctf/controller-fwk/pull/50)]
+
 ## [1.5.2](https://github.com/u-ctf/controller-fwk/releases/tag/v1.5.2) - 2026-07-14
 
 ### ❤️ Thanks to all contributors! ❤️
