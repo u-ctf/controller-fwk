@@ -42,7 +42,7 @@ import (
 //		Build()
 type UntypedDependencyBuilder[CustomResourceType client.Object, ContextType Context[CustomResourceType]] struct {
 	inner *DependencyBuilder[CustomResourceType, ContextType, *unstructured.Unstructured]
-	gvk   schema.GroupVersionKind
+	gvkF  func() schema.GroupVersionKind
 }
 
 // NewUntypedDependencyBuilder creates a new UntypedDependencyBuilder for constructing
@@ -77,7 +77,9 @@ type UntypedDependencyBuilder[CustomResourceType client.Object, ContextType Cont
 func NewUntypedDependencyBuilder[CustomResourceType client.Object, ContextType Context[CustomResourceType]](ctx ContextType, gvk schema.GroupVersionKind) *UntypedDependencyBuilder[CustomResourceType, ContextType] {
 	return &UntypedDependencyBuilder[CustomResourceType, ContextType]{
 		inner: NewDependencyBuilder(ctx, &unstructured.Unstructured{}),
-		gvk:   gvk,
+		gvkF: func() schema.GroupVersionKind {
+			return gvk
+		},
 	}
 }
 
@@ -106,7 +108,7 @@ func (b *UntypedDependencyBuilder[CustomResourceType, ContextType]) WithKeyFunc(
 func (b *UntypedDependencyBuilder[CustomResourceType, ContextType]) Build() *UntypedDependency[CustomResourceType, ContextType] {
 	return &UntypedDependency[CustomResourceType, ContextType]{
 		Dependency: b.inner.Build(),
-		gvk:        b.gvk,
+		gvkF:       b.gvkF,
 	}
 }
 
@@ -318,5 +320,41 @@ func (b *UntypedDependencyBuilder[CustomResourceType, ContextType]) WithWaitForR
 //	.WithAddManagedByAnnotation(true) // Mark dependency relationship for debugging
 func (b *UntypedDependencyBuilder[CustomResourceType, ContextType]) WithAddManagedByAnnotation(add bool) *UntypedDependencyBuilder[CustomResourceType, ContextType] {
 	b.inner = b.inner.WithAddManagedByAnnotation(add)
+	return b
+}
+
+// WithGVKFunc specifies a function that dynamically determines the GroupVersionKind
+// of the untyped dependency at runtime.
+//
+// This is useful when the exact GVK is not known at compile time or depends on
+// configuration in the custom resource. The function is evaluated during dependency
+// resolution, allowing the target resource type to change based on the reconciliation
+// context.
+//
+// Common use cases:
+//   - Selecting different API versions based on the custom resource's spec
+//   - Targeting different resource kinds depending on feature flags or configuration
+//   - Supporting multiple CRD versions with a single dependency definition
+//
+// If not called, the static GVK passed to NewUntypedDependencyBuilder is used.
+//
+// Example:
+//
+//	.WithGVKFunc(func() schema.GroupVersionKind {
+//		if ctx.Data.UseV2API {
+//			return schema.GroupVersionKind{
+//				Group:   "example.com",
+//				Version: "v2",
+//				Kind:    "Database",
+//			}
+//		}
+//		return schema.GroupVersionKind{
+//			Group:   "example.com",
+//			Version: "v1",
+//			Kind:    "Database",
+//		}
+//	})
+func (b *UntypedDependencyBuilder[CustomResourceType, ContextType]) WithGVKFunc(f func() schema.GroupVersionKind) *UntypedDependencyBuilder[CustomResourceType, ContextType] {
+	b.gvkF = f
 	return b
 }
