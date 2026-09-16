@@ -213,7 +213,9 @@ func TestDependencyMethodsCoverTypedAndUntypedVariants(t *testing.T) {
 		Dependency: &Dependency[*corev1.ConfigMap, Context[*corev1.ConfigMap], *unstructured.Unstructured]{
 			output: &unstructured.Unstructured{},
 		},
-		gvk: gvk,
+		gvkF: func() schema.GroupVersionKind {
+			return gvk
+		},
 	}
 
 	untypedCreated, ok := untypedDependency.New().(*unstructured.Unstructured)

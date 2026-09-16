@@ -10,28 +10,28 @@ import (
 
 type UntypedDependency[CustomResourceType client.Object, ContextType Context[CustomResourceType]] struct {
 	*Dependency[CustomResourceType, ContextType, *unstructured.Unstructured]
-	gvk schema.GroupVersionKind
+	gvkF func() schema.GroupVersionKind
 }
 
 var _ GenericDependency[client.Object, Context[client.Object]] = &UntypedDependency[client.Object, Context[client.Object]]{}
 
 func (c *UntypedDependency[CustomResourceType, ContextType]) New() client.Object {
 	out := &unstructured.Unstructured{}
-	out.SetGroupVersionKind(c.gvk)
+	out.SetGroupVersionKind(c.gvkF())
 	return out
 }
 
 func (c *UntypedDependency[CustomResourceType, ContextType]) Kind() string {
-	return fmt.Sprintf("Untyped%s", c.gvk.Kind)
+	return fmt.Sprintf("Untyped%s", c.gvkF().Kind)
 }
 
 func (c *UntypedDependency[CustomResourceType, ContextType]) Set(obj client.Object) {
 	if c.output == nil {
 		c.output = &unstructured.Unstructured{}
-		c.output.SetGroupVersionKind(c.gvk)
+		c.output.SetGroupVersionKind(c.gvkF())
 	}
 
 	unstructuredObj := obj.(*unstructured.Unstructured)
 	*c.output = *unstructuredObj
-	c.output.SetGroupVersionKind(c.gvk)
+	c.output.SetGroupVersionKind(c.gvkF())
 }
