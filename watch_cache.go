@@ -1,6 +1,8 @@
 package ctrlfwk
 
 import (
+	"sync"
+
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
@@ -28,12 +30,14 @@ type Watcher interface {
 type WatchCache struct {
 	cache      map[WatchCacheKey]bool
 	controller controller.TypedController[reconcile.Request]
+	lock       *sync.RWMutex
 
 	ctrl.Manager
 }
 
 func NewWatchCache(mgr ctrl.Manager) WatchCache {
 	return WatchCache{
+		lock:    &sync.RWMutex{},
 		cache:   make(map[WatchCacheKey]bool),
 		Manager: mgr,
 	}
@@ -44,6 +48,12 @@ func NewWatchKey(gvk schema.GroupVersionKind, watchType WatchCacheType) WatchCac
 }
 
 func (w *WatchCache) AddWatchSource(key WatchCacheKey) {
+	if w.lock == nil {
+		w.lock = &sync.RWMutex{}
+	}
+	w.lock.Lock()
+	defer w.lock.Unlock()
+
 	if w.cache == nil {
 		w.cache = make(map[WatchCacheKey]bool)
 	}
@@ -51,6 +61,12 @@ func (w *WatchCache) AddWatchSource(key WatchCacheKey) {
 }
 
 func (w *WatchCache) IsWatchingSource(key WatchCacheKey) bool {
+	if w.lock == nil {
+		w.lock = &sync.RWMutex{}
+	}
+	w.lock.RLock()
+	defer w.lock.RUnlock()
+
 	if w.cache == nil {
 		return false
 	}
