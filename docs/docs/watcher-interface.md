@@ -18,6 +18,7 @@ type Watcher interface {
 type WatchCache struct {
 	cache      map[WatchCacheKey]bool
 	controller controller.TypedController[reconcile.Request]
+	lock       *sync.RWMutex
 	ctrl.Manager
 }
 ```
