@@ -46,7 +46,9 @@ func keysAndValuesToMap(keysAndValues ...any) sentry.BreadcrumbHint {
 }
 
 func (s *sentrySink) Info(level int, msg string, keysAndValues ...any) {
-	s.LogSink.Info(level, msg, keysAndValues...)
+	if s.LogSink.Enabled(level) {
+		s.LogSink.Info(level, msg, keysAndValues...)
+	}
 
 	hub := sentry.GetHubFromContext(s.Context)
 	if hub == nil {
@@ -76,8 +78,11 @@ func (s *sentrySink) Error(err error, msg string, keysAndValues ...any) {
 	hub.CaptureException(err)
 }
 
+// Enabled always reports true so Info calls reach the sink and become
+// breadcrumbs. The forwarding decision to the wrapped sink is gated
+// inside Info.
 func (s *sentrySink) Enabled(level int) bool {
-	return s.LogSink.Enabled(level)
+	return true
 }
 
 func (s *sentrySink) WithValues(keysAndValues ...any) logr.LogSink {

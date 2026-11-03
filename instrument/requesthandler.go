@@ -38,7 +38,7 @@ func (t *instrumentedEventHandler[ObjectType]) Create(
 	ctx, span := t.tracer.StartSpan(ctxPtr, ctx, fmt.Sprintf("event.create.handler.%T", t.inner))
 	defer span.End()
 
-	logger.Info("Received create event", "object_type", e.Object.GetObjectKind().GroupVersionKind(), "name", e.Object.GetName(), "namespace", e.Object.GetNamespace())
+	logger.V(1).Info("Received create event", "object_type", e.Object.GetObjectKind().GroupVersionKind(), "name", e.Object.GetName(), "namespace", e.Object.GetNamespace())
 
 	tracingQueue, ok := q.(*InstrumentedQueue[reconcile.Request])
 	if !ok {
@@ -60,11 +60,15 @@ func (t *instrumentedEventHandler[ObjectType]) Update(ctx context.Context, e eve
 	ctx, span := t.tracer.StartSpan(ctxPtr, ctx, fmt.Sprintf("event.update.handler.%T", t.inner))
 	defer span.End()
 
-	patch, _ := jsondiff.Compare(e.ObjectOld, e.ObjectNew,
-		jsondiff.Ignores("/metadata/managedFields", "/kind", "/apiVersion"),
-	)
+	logger.V(1).Info("Received update event", "object_type", e.ObjectOld.GetObjectKind().GroupVersionKind(), "name", e.ObjectOld.GetName(), "namespace", e.ObjectOld.GetNamespace())
 
-	logger.Info("Received update event", "object_type", e.ObjectOld.GetObjectKind().GroupVersionKind(), "name", e.ObjectOld.GetName(), "namespace", e.ObjectOld.GetNamespace(), "patch_data", patch)
+	if logger.V(2).Enabled() {
+		patch, _ := jsondiff.Compare(e.ObjectOld, e.ObjectNew,
+			jsondiff.Ignores("/metadata/managedFields", "/kind", "/apiVersion"),
+		)
+
+		logger.V(2).Info("Update event payload", "object_type", e.ObjectOld.GetObjectKind().GroupVersionKind(), "name", e.ObjectOld.GetName(), "namespace", e.ObjectOld.GetNamespace(), "patch_data", patch)
+	}
 
 	tracingQueue, ok := q.(*InstrumentedQueue[reconcile.Request])
 	if !ok {
@@ -87,7 +91,7 @@ func (t *instrumentedEventHandler[ObjectType]) Delete(ctx context.Context, e eve
 	ctx, span := t.tracer.StartSpan(ctxPtr, ctx, fmt.Sprintf("event.delete.handler.%T", t.inner))
 	defer span.End()
 
-	logger.Info("Received delete event", "object_type", e.Object.GetObjectKind().GroupVersionKind(), "name", e.Object.GetName(), "namespace", e.Object.GetNamespace())
+	logger.V(1).Info("Received delete event", "object_type", e.Object.GetObjectKind().GroupVersionKind(), "name", e.Object.GetName(), "namespace", e.Object.GetNamespace())
 
 	tracingQueue, ok := q.(*InstrumentedQueue[reconcile.Request])
 	if !ok {
@@ -110,7 +114,7 @@ func (t *instrumentedEventHandler[ObjectType]) Generic(ctx context.Context, e ev
 	ctx, span := t.tracer.StartSpan(ctxPtr, *ctxPtr, fmt.Sprintf("event.generic.handler.%T", t.inner))
 	defer span.End()
 
-	logger.Info("Received generic event", "object_type", e.Object.GetObjectKind().GroupVersionKind(), "name", e.Object.GetName(), "namespace", e.Object.GetNamespace())
+	logger.V(1).Info("Received generic event", "object_type", e.Object.GetObjectKind().GroupVersionKind(), "name", e.Object.GetName(), "namespace", e.Object.GetNamespace())
 
 	tracingQueue, ok := q.(*InstrumentedQueue[reconcile.Request])
 	if !ok {

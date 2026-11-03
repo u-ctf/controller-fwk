@@ -98,7 +98,7 @@ func (t *instrumenter) GetContextForEvent(event any) *context.Context {
 
 	data, err := json.Marshal(event)
 	if err != nil {
-		hash := md5.Sum([]byte(fmt.Sprintf("%#+v\n", event)))
+		hash := md5.Sum(fmt.Appendf(nil, "%#+v\n", event))
 		digest = fmt.Sprintf("%x", hash)
 	} else {
 		hash := md5.Sum(data)
