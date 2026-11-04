@@ -59,7 +59,7 @@ func SetupWatch[
 			label = LabelDependentWatchedBy
 		}
 
-		reconciler.GetLogger().Info("Adding watch for object", "gvk", gvk, "namespace", object.GetNamespace(), "name", object.GetName(), "label", label)
+		reconciler.GetLogger().V(1).Info("Adding watch for object", "gvk", gvk, "namespace", object.GetNamespace(), "name", object.GetName(), "label", label)
 
 		// Add the watch source to the reconciler
 		err = reconciler.GetController().Watch(

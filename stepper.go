@@ -222,7 +222,7 @@ func (stepper *Stepper[K, C]) executeFinalStep(ctx C, req ctrl.Request, lastStep
 		return err
 	}
 
-	stepper.logger.Info("Executed final step", "step", stepper.final.Name, "stepDuration", stepDuration, "lastStep", lastStepName)
+	stepper.logger.V(1).Info("Executed final step", "step", stepper.final.Name, "stepDuration", stepDuration, "lastStep", lastStepName)
 	return nil
 }
 
@@ -233,7 +233,7 @@ func (stepper *Stepper[K, C]) Execute(ctx C, req ctrl.Request) (ctrl.Result, err
 	lastStepName := ""
 	var lastStepResult StepResult = ResultSuccess()
 
-	logger.Info("Starting stepper execution")
+	logger.V(1).Info("Starting stepper execution")
 
 	for _, step := range stepper.steps {
 		stepStartedAt := time.Now()
@@ -247,28 +247,28 @@ func (stepper *Stepper[K, C]) Execute(ctx C, req ctrl.Request) (ctrl.Result, err
 
 			if result.Error() != nil {
 				if IsFinalizing(ctx.GetCustomResource()) && apierrors.IsNotFound(result.Error()) {
-					logger.Info("Resource not found during finalization, ignoring error", "step", step.Name, "stepDuration", stepDuration)
+					logger.V(2).Info("Resource not found during finalization, ignoring error", "step", step.Name, "stepDuration", stepDuration)
 					resultToReturn = ResultRequeueIn(1 * time.Second)
 				} else {
 					logger.Error(result.Error(), "Error in step", "step", step.Name, "stepDuration", stepDuration)
 				}
 			} else if result.RequeueAfter() > 0 {
-				logger.Info("Requeueing after step", "step", step.Name, "after", result.RequeueAfter(), "stepDuration", stepDuration)
+				logger.V(1).Info("Requeueing after step", "step", step.Name, "after", result.RequeueAfter(), "stepDuration", stepDuration)
 			} else {
-				logger.Info("Early return after step", "step", step.Name, "stepDuration", stepDuration)
+				logger.V(1).Info("Early return after step", "step", step.Name, "stepDuration", stepDuration)
 			}
 
 			finalErr := stepper.executeFinalStep(ctx, req, lastStepName, lastStepResult)
 			return mergeFinalStepResult(resultToReturn, finalErr).Normal()
 		}
 
-		logger.Info("Executed step", "step", step.Name, "stepDuration", stepDuration)
+		logger.V(1).Info("Executed step", "step", step.Name, "stepDuration", stepDuration)
 	}
 
 	if err := stepper.executeFinalStep(ctx, req, lastStepName, lastStepResult); err != nil {
 		return ResultInError(err).Normal()
 	}
 
-	logger.Info("All steps executed successfully", "duration", time.Since(startedAt))
+	logger.V(1).Info("All steps executed successfully", "duration", time.Since(startedAt))
 	return ctrl.Result{}, nil
 }

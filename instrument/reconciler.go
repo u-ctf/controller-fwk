@@ -30,9 +30,6 @@ func (t *InstrumentedReconciler) Reconcile(ctx context.Context, req reconcile.Re
 	ctx = logf.IntoContext(ctx, logger)
 
 	result, err := t.internalReconciler.Reconcile(ctx, req)
-	if err != nil {
-		logger.Error(err, "failed to reconcile")
-	}
 
 	t.Cleanup(ctxPtr, req)
 

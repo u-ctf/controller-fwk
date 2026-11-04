@@ -29,11 +29,11 @@ func NewReconcileResourcesStep[
 				subStep := NewReconcileResourceStep(ctx, reconciler, resource)
 				result := subStep.Step(ctx, subStepLogger, req)
 				if result.ShouldReturn() {
-					subStepLogger.Info("Resource reconciliation resulted in early return or error")
+					subStepLogger.V(1).Info("Resource reconciliation resulted in early return or error")
 					returnResults = append(returnResults, result)
 					continue
 				}
-				subStepLogger.Info("Reconciled resource successfully")
+				subStepLogger.V(1).Info("Reconciled resource successfully")
 			}
 
 			// Return result errors first
