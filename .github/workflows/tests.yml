@@ -34,7 +34,9 @@ jobs:
             tests/operator/go.sum
 
       - name: Unit tests
-        run: go test -v ./... -coverprofile=coverage/unit_coverage.out -covermode=set -coverpkg=github.com/u-ctf/controller-fwk/...
+        run: |
+          mkdir -p coverage
+          go test -v ./... -coverprofile=coverage/unit_coverage.out -covermode=set -coverpkg=github.com/u-ctf/controller-fwk/...
 
       - name: Operator e2e tests
         working-directory: tests/operator
