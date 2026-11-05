@@ -1,5 +1,53 @@
 # Changelog
 
+## [1.6.0](https://github.com/u-ctf/controller-fwk/compare/v1.5.3...v1.6.0) (2026-11-05)
+
+
+### Features
+
+* add readiness evaluator final step ([ac9be87](https://github.com/u-ctf/controller-fwk/commit/ac9be874e2e31c22554bdf9a20b5c897fe8daeaa))
+* **concurrency:** add context, fix builders and add more tests ([5bd495d](https://github.com/u-ctf/controller-fwk/commit/5bd495d6a8c78ad71c53ee91aa1b218e9d13ebf3))
+* **concurrency:** add context, fix builders and add more tests ([d3310a7](https://github.com/u-ctf/controller-fwk/commit/d3310a7fdc319fb70c30c07757620be6d0d04960))
+* **context:** update context to be more generic ([40b0102](https://github.com/u-ctf/controller-fwk/commit/40b0102667abeac2671c6775e68cd7773ce34bd0))
+* **context:** update context to be more generic ([c219fef](https://github.com/u-ctf/controller-fwk/commit/c219fefc362daba70f25fd52495edac2985dcec1))
+* **controller:** add pausing feature ([19c96d1](https://github.com/u-ctf/controller-fwk/commit/19c96d18909350cc3eea1cbd9490619989fb4bde))
+* **controller:** add pausing feature ([95ef5d7](https://github.com/u-ctf/controller-fwk/commit/95ef5d73c6be6e28e130446d37dd97b8023783a3))
+* **deps:** add dependency keyF ([f746a38](https://github.com/u-ctf/controller-fwk/commit/f746a38f688fb68961e59caef281b23a619d64bb))
+* **finalizer:** add first try at finalizer ([d5f085b](https://github.com/u-ctf/controller-fwk/commit/d5f085bb14e8b3f7dd6173a6c8618b87f39ba9d1))
+* first version ([fc6a527](https://github.com/u-ctf/controller-fwk/commit/fc6a527ea637c37c01b714d826774476f57afa7c))
+* ignore not found errors in step_end ([#46](https://github.com/u-ctf/controller-fwk/issues/46)) ([6aefb1a](https://github.com/u-ctf/controller-fwk/commit/6aefb1af51cd5c6cc20ddb951e3498912cf09d76))
+* **instrumentation:** rename tracing to instrumentation and improve the design ([202d365](https://github.com/u-ctf/controller-fwk/commit/202d36594748a5ef3105ec369e8358e9c1d21944))
+* make NewResolveDependencyStep return a custom step result ([#43](https://github.com/u-ctf/controller-fwk/issues/43)) ([48efb06](https://github.com/u-ctf/controller-fwk/commit/48efb0625210dd641ef13f9e8f5532bec5d355ee))
+* **resource:** add custom error handler ([#47](https://github.com/u-ctf/controller-fwk/issues/47)) ([8d83cda](https://github.com/u-ctf/controller-fwk/commit/8d83cdad70f0fecb90ae601be7dc91d7a8361661))
+* **tests:** add more e2e tests ([6477a60](https://github.com/u-ctf/controller-fwk/commit/6477a60dd9822a7938e2dd0b3630df9ca6a4d2d5))
+* **v2:** add builder pattern and migrate to it in tests ([dd6b0e7](https://github.com/u-ctf/controller-fwk/commit/dd6b0e7a10e8eebe6ac889ddb9d1025879989861))
+* **v2:** modify naming and some inner workings for simplicity ([400c2dd](https://github.com/u-ctf/controller-fwk/commit/400c2dd97a196db00aeaa07caf370d6772512bcd))
+* **v2:** working towards v2 ([8c42546](https://github.com/u-ctf/controller-fwk/commit/8c4254663bb175de80af6a4eebdda6599faafaef))
+* **watch:** add a watch cache option builder ([#35](https://github.com/u-ctf/controller-fwk/issues/35)) ([3290de3](https://github.com/u-ctf/controller-fwk/commit/3290de331e8ffaf22dc006f04c789ba7f9820d08))
+
+
+### Bug Fixes
+
+* **context:** export Data field ([9926540](https://github.com/u-ctf/controller-fwk/commit/992654043dd4ea9c2fe94ba8f52bd6ed83b5eabb))
+* **context:** export Data field ([05ddbfb](https://github.com/u-ctf/controller-fwk/commit/05ddbfb77a278e6a7b7349ee7b7c447505baabac))
+* **dependencies:** do not retry on optional dependencies ([3054ed8](https://github.com/u-ctf/controller-fwk/commit/3054ed8874691e62bc4c866ae3fe740f45006e27))
+* **e2e:** create ns using kubectl instead of clientset used for the operator ([534c3a6](https://github.com/u-ctf/controller-fwk/commit/534c3a655b5494a890673303c6131afc47b96fcb))
+* **e2e:** remove systemd from e2e image ([3acf50e](https://github.com/u-ctf/controller-fwk/commit/3acf50efe3db9984aabb677ef35ae0448cc1aef7))
+* **e2e:** use patch instead of update ([bfc4c38](https://github.com/u-ctf/controller-fwk/commit/bfc4c38d4b58d2cc9083cfaa669d47ac5f62ebb4))
+* **instrument:** ensure logger includes span context ([0408e74](https://github.com/u-ctf/controller-fwk/commit/0408e74bf2ab2e15213306fe5a06598efa47c654))
+* **instrument:** fix race condition in instrumented queue ([#50](https://github.com/u-ctf/controller-fwk/issues/50)) ([f61073a](https://github.com/u-ctf/controller-fwk/commit/f61073a6feb800bffbeea8fe50be47bb53ffc8c7))
+* **mgr:** don't require mgr to be exposed by default, it's only needed when autowatch is set ([5787340](https://github.com/u-ctf/controller-fwk/commit/5787340bb4613efaecdf8f97b65a2c087e3c7638))
+* **queue:** add tests for queue and fix issue ([c9a95d4](https://github.com/u-ctf/controller-fwk/commit/c9a95d4120dc3476f7db3305b91f7e04989217f1))
+* **release:** change settings and remove 0.1.0 ([1885d22](https://github.com/u-ctf/controller-fwk/commit/1885d22d7b833f6b1b911dd4c844fbe707804035))
+* **resource:** allow resource to be paused individually ([ddd4aab](https://github.com/u-ctf/controller-fwk/commit/ddd4aab61b67d08906da64cc0a978ef1d044eb83))
+* **sample-operator:** change typing to use alias and reduce boilerplate ([aee2c6b](https://github.com/u-ctf/controller-fwk/commit/aee2c6b23be0791ff08cc8982f8ae45b6ddd3886))
+* **sample-operator:** change typing to use alias and reduce boilerplate ([b063b6f](https://github.com/u-ctf/controller-fwk/commit/b063b6f24b1cd8bab5a7a9d5b49115992369d651))
+* **stepper:** make StepResult implement an interface ([#40](https://github.com/u-ctf/controller-fwk/issues/40)) ([7b3a9bf](https://github.com/u-ctf/controller-fwk/commit/7b3a9bff1b6c18a88f483500992d77756f3c1608))
+* **steps:** set cr after patch on finalizer's steps ([f50658f](https://github.com/u-ctf/controller-fwk/commit/f50658fbea4f390e057b71e1fdfb2dae07841440))
+* **tests:** cleanup labels to avoid ns timeout ([e552106](https://github.com/u-ctf/controller-fwk/commit/e55210677042ee2719a60d48b8f29e8ee9b42ab2))
+* **tests:** implement fixes by copilot ([590a871](https://github.com/u-ctf/controller-fwk/commit/590a871ec339aac76e61a9154641d8a891d794b0))
+* **watch:** synchronize watch cache map ([#52](https://github.com/u-ctf/controller-fwk/issues/52)) ([d214f42](https://github.com/u-ctf/controller-fwk/commit/d214f4277f81db6bef41d825c739358d8403eb15))
+
 ## [1.5.3](https://github.com/u-ctf/controller-fwk/releases/tag/v1.5.3) - 2026-07-24
 
 ### ❤️ Thanks to all contributors! ❤️
