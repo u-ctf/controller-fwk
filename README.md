@@ -4,8 +4,8 @@
 
 # Controller Framework (ctrlfwk)
 
-[![Pipeline](https://woodpecker.yewolf.fr/api/badges/5/status.svg)](https://woodpecker.yewolf.fr/repos/5)
-[![Coverage](https://img.shields.io/endpoint?url=https://artifacts.yewolf.fr/u-ctf/public/1069357028/main/coverage/coverage_badge.json)](https://artifacts.yewolf.fr/u-ctf/public/1069357028/main/coverage/coverage.html)
+[![Tests](https://github.com/u-ctf/controller-fwk/actions/workflows/tests.yml/badge.svg)](https://github.com/u-ctf/controller-fwk/actions/workflows/tests.yml)
+[![Coverage](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/u-ctf/controller-fwk/coverage/coverage_badge.json)](https://github.com/u-ctf/controller-fwk/blob/coverage/coverage.txt)
 [![Go Version](https://img.shields.io/github/go-mod/go-version/u-ctf/controller-fwk)](https://golang.org/dl/)
 [![Go Reference](https://pkg.go.dev/badge/github.com/u-ctf/controller-fwk.svg)](https://pkg.go.dev/github.com/u-ctf/controller-fwk)
 [![GitHub release](https://img.shields.io/github/v/release/u-ctf/controller-fwk)](https://github.com/u-ctf/controller-fwk/releases)

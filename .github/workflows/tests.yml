@@ -1,0 +1,108 @@
+name: Tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions: {}
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref_name }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  tests:
+    name: Unit and e2e tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache-dependency-path: |
+            go.sum
+            tests/operator/go.sum
+
+      - name: Unit tests
+        run: go test -v ./... -coverprofile=coverage/unit_coverage.out -covermode=set -coverpkg=github.com/u-ctf/controller-fwk/...
+
+      - name: Operator e2e tests
+        working-directory: tests/operator
+        run: |
+          go mod tidy
+          make test-e2e-coverage
+
+      - name: Merge coverage profiles
+        run: .github/scripts/merge-coverage.sh
+
+      - name: Build coverage summary and PR comment
+        run: |
+          TOTAL=$(awk '/^total:/ {gsub(/%/, "", $3); print $3}' coverage/coverage.txt)
+          RUN_URL="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
+          MAIN_REPORT_URL="https://github.com/${GITHUB_REPOSITORY}/blob/coverage/coverage.txt"
+          MAIN_BADGE_URL="https://raw.githubusercontent.com/${GITHUB_REPOSITORY}/coverage/coverage_badge.json"
+
+          {
+            echo "## 📊 Test Coverage Report"
+            echo ""
+            echo "Coverage: **${TOTAL}%**"
+            echo ""
+            echo "Coverage on \`main\`: [![Coverage](https://img.shields.io/endpoint?url=${MAIN_BADGE_URL})](${MAIN_REPORT_URL})"
+            echo ""
+            echo "🔍 **Detailed Coverage Report**: [View HTML Report](${RUN_URL}#artifacts) (download artifact \`coverage\`)"
+          } | tee coverage/comment.md >> "${GITHUB_STEP_SUMMARY}"
+
+      - name: Upload coverage artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage
+          path: coverage/
+          if-no-files-found: error
+
+      # GITHUB_TOKEN is read-only on fork pull requests, so comments can only
+      # be posted for PRs from branches in this repository. Fork contributors
+      # see the coverage in the job summary and the workflow artifact instead.
+      - name: Comment on pull request
+        if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.fork == false
+        uses: marocchino/sticky-pull-request-comment@v2
+        with:
+          header: test-coverage
+          path: coverage/comment.md
+
+  publish-coverage:
+    name: Publish coverage report
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - name: Download coverage artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: coverage
+          path: coverage
+
+      - name: Publish report to the coverage branch
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          git init -b main publish
+          cp coverage/coverage_badge.json coverage/coverage.txt coverage/coverage.html publish/
+          cd publish
+          git add .
+          git -c user.name="github-actions[bot]" -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
+            commit -m "coverage report for ${GITHUB_SHA}"
+          git remote add origin "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          git push origin main:coverage --force
